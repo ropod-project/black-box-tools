@@ -1,0 +1,4 @@
+*.pyc
+*.egg-info
+.ipynb_checkpoints
+.nbgrader.log
