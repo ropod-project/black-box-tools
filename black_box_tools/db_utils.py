@@ -3,22 +3,31 @@ import pymongo as pm
 
 class DBUtils(object):
     @staticmethod
-    def restore_db(data_dir, drop_existing_records=True):
-        '''Restores a MongoDB database dumped in the given directory. The name
-        of the restored database will be the same as the name of the directory.
-        Returns True if everything goes well; returns False otherwise.
+    def restore_db(data_dir, drop_existing_records=True, db_name=None):
+        '''Restores a MongoDB database dumped in the given directory. If "db_name"
+        is not passed or is set to None, the name of the restored database
+        will be the same as the name of the directory. Returns True if
+        everything goes well; returns False otherwise.
 
         Keyword arguments:
         @param data_dir -- absolute path of a directory containing a dumped MongoDB database
         @param drop_existing_records -- indicates whether to drop any existing records
                                         if a database with the same name already
                                         exists (default True)
+        @param db_name -- name of the database for restoring the data (default None,
+                          in which case the database name is the same as the name
+                          of the data directory)
 
         '''
         try:
             commands = ['mongorestore', data_dir]
             if drop_existing_records:
                 commands.append('--drop')
+
+            if db_name:
+                commands.append('--db')
+                commands.append(db_name)
+
             subprocess.run(commands)
             return True
         except Exception as exc:
