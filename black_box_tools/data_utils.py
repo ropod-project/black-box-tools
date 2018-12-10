@@ -32,7 +32,7 @@ class DataUtils(object):
         if number_of_item_instances != -1:
             data = np.zeros((number_of_docs, number_of_item_instances))
             for i in range(number_of_item_instances):
-                item_var_name = var_name.replace('*', str(i+1))
+                item_var_name = var_name.replace('*', str(i))
                 item_data = np.array([DataUtils.get_var_value(doc, item_var_name)
                                       for doc in data_dicts_list])
                 data[:, i] = item_data
