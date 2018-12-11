@@ -13,7 +13,7 @@ class BlackBoxRosbag(object):
     def play(black_box_db_name, sync_time=True):
         '''Takes the collections in the black box database which contain data
         that can be mapped to ROS messages and publishes the data on the appropriate
-        topics (as specified in the black box metadata -- this is still a TODO).
+        topics (as specified in the black box metadata).
 
         @param black_box_db_name -- name of a black box database
         @param sync_time -- indicates whether the time between the published
