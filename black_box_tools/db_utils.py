@@ -36,6 +36,22 @@ class DBUtils(object):
             return False
 
     @staticmethod
+    def get_data_collection_names(db_name):
+        '''Returns the name of all black box data collections in the specified database.
+
+        Keyword arguments:
+        @param db_name -- name of a MongoDB database
+
+        '''
+        client = pm.MongoClient()
+        db = client[db_name]
+        collection_names = db.list_collection_names()
+        filtered_collection_names = [collection for collection in collection_names
+                                     if collection != 'system.indexes' and
+                                     collection != 'black_box_metadata']
+        return filtered_collection_names
+
+    @staticmethod
     def get_all_docs(db_name, collection_name):
         '''Returns all documents contained in the specified collection of the given database
 
@@ -50,3 +66,33 @@ class DBUtils(object):
         doc_cursor = collection.find({})
         docs = [doc for doc in doc_cursor]
         return docs
+
+    @staticmethod
+    def get_doc_cursor(db_name, collection_name):
+        '''Returns a cursor for all documents in the specified collection of the given database
+
+        Keyword arguments:
+        @param db_name -- name of a MongoDB database
+        @param collection_name -- name of a collection from which to take data
+
+        '''
+        client = pm.MongoClient()
+        db = client[db_name]
+        collection = db[collection_name]
+        doc_cursor = collection.find({})
+        return doc_cursor
+
+    @staticmethod
+    def get_collection_metadata(db_name, collection_name):
+        '''Returns the entry of the 'black_box_metadata' collection for the specified collection
+
+        Keyword arguments:
+        @param db_name -- name of a MongoDB database
+        @param collection_name -- name of a collection whose metadata should be retrieved
+
+        '''
+        client = pm.MongoClient()
+        db = client[db_name]
+        collection = db['black_box_metadata']
+        metadata_doc = collection.find_one({'collection_name': collection_name})
+        return metadata_doc
