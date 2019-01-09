@@ -96,3 +96,18 @@ class DBUtils(object):
         collection = db['black_box_metadata']
         metadata_doc = collection.find_one({'collection_name': collection_name})
         return metadata_doc
+
+    @staticmethod
+    def get_oldest_doc(db_name, collection_name):
+        '''Returns the oldest document in the given collection name
+
+        Keyword arguments:
+        @param db_name -- name of a MongoDB database
+        @param collection_name -- name of a collection
+
+        '''
+        client = pm.MongoClient()
+        db = client[db_name]
+        collection = db[collection_name]
+        doc = collection.find_one(sort=[('timestamp', pm.ASCENDING)])
+        return doc

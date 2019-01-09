@@ -30,7 +30,7 @@ class TopicUtils(object):
         self.topic_pub = rospy.Publisher(topic, msg_type, queue_size=queue_size)
         self.publishing_data = False
 
-    def publish_data(self, dict_msgs, sync_time=True):
+    def publish_data(self, dict_msgs, sync_time=True, global_clock_start=0.):
         '''Publishes a list of black box data items to self.topic. If "sync_time"
         is set to True, synchronises the messages based on the timestamps
         of the data items.
@@ -42,11 +42,20 @@ class TopicUtils(object):
         @param sync_time -- indicates whether the time between the published
                             messages should be synchronised based on the
                             message timestamps (default True)
+        @param global_clock_start -- if sync_time is set to True, this
+                                     argument needs to be passed so that
+                                     message publishing can be time synchronised
+                                     based on a global clock (default -1.)
 
         '''
         if isinstance(dict_msgs, list):
             if dict_msgs:
                 self.publishing_data = True
+
+                # we sleep until it's time to publish the first message
+                msg_time_delta = dict_msgs[0]['timestamp'] - global_clock_start
+                rospy.sleep(msg_time_delta)
+
                 current_msg_time = dict_msgs[0]['timestamp']
                 for i in range(len(dict_msgs)-1):
                     if not self.publishing_data:
@@ -67,10 +76,12 @@ class TopicUtils(object):
             dict_msg = {}
             try:
                 dict_msg = next(dict_msgs)
-                current_msg_time = None
-                if dict_msg:
-                    current_msg_time = dict_msg['timestamp']
 
+                # we sleep until it's time to publish the first message
+                msg_time_delta = dict_msg['timestamp'] - global_clock_start
+                rospy.sleep(msg_time_delta)
+
+                current_msg_time = dict_msg['timestamp']
                 self.publishing_data = True
                 while dict_msg:
                     if not self.publishing_data:

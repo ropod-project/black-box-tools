@@ -28,6 +28,15 @@ class BlackBoxRosbag(object):
         data_collections = DBUtils.get_data_collection_names(black_box_db_name)
         self.topic_managers = []
         self.topic_manager_threads = []
+
+        # we get the timestamp of the oldest document among the collections
+        # so that we can synchronise the published data
+        start_timestamp = 1e20
+        for collection in data_collections:
+            oldest_doc = DBUtils.get_oldest_doc(black_box_db_name, collection)
+            if oldest_doc['timestamp'] < start_timestamp:
+                start_timestamp = oldest_doc['timestamp']
+
         for collection in data_collections:
             collection_metadata = DBUtils.get_collection_metadata(black_box_db_name, collection)
             topic_name = collection_metadata['ros']['topic_name']
@@ -39,7 +48,8 @@ class BlackBoxRosbag(object):
             data_cursor = DBUtils.get_doc_cursor(black_box_db_name, collection)
             data_thread = threading.Thread(target=topic_manager.publish_data,
                                            kwargs={'dict_msgs': data_cursor,
-                                                   'sync_time': sync_time})
+                                                   'sync_time': sync_time,
+                                                   'global_clock_start': start_timestamp})
             data_thread.daemon = True
             self.topic_manager_threads.append(data_thread)
 
