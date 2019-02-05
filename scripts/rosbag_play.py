@@ -6,6 +6,7 @@ from black_box_tools.ros.black_box_rosbag import BlackBoxRosbag
 if __name__ == '__main__':
     if len(sys.argv) < 2:
         print('Usage: python rosbag_play.py [db_name]')
+        sys.exit(1)
     db_name = sys.argv[1]
 
     rospy.init_node('rosbag_play')
