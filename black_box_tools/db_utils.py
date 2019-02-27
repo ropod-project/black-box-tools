@@ -111,3 +111,56 @@ class DBUtils(object):
         collection = db[collection_name]
         doc = collection.find_one(sort=[('timestamp', pm.ASCENDING)])
         return doc
+
+    @staticmethod
+    def get_newest_doc(db_name, collection_name):
+        '''Returns the newest document in the given collection name
+
+        Keyword arguments:
+        @param db_name -- name of a MongoDB database
+        @param collection_name -- name of a collection
+
+        '''
+        client = pm.MongoClient()
+        db = client[db_name]
+        collection = db[collection_name]
+        doc = collection.find_one(sort=[('timestamp', pm.DESCENDING)])
+        return doc
+
+    @staticmethod
+    def get_db_oldest_doc(db_name):
+        """get the oldest record in the mongo db and return the corresponding
+        timestamp
+
+        Keyword arguments:
+        @param db_name -- name of a MongoDB database
+
+        @returns: float
+
+        """
+        data_collections = DBUtils.get_data_collection_names(db_name)
+        start_timestamp = float('inf')
+        for collection in data_collections:
+            oldest_doc = DBUtils.get_oldest_doc(db_name, collection)
+            if oldest_doc['timestamp'] < start_timestamp:
+                start_timestamp = oldest_doc['timestamp']
+        return start_timestamp
+
+    @staticmethod
+    def get_db_newest_doc(db_name):
+        """get the newest record in the mongo db and return the corresponding
+        timestamp
+
+        Keyword arguments:
+        @param db_name -- name of a MongoDB database
+
+        @returns: float
+
+        """
+        data_collections = DBUtils.get_data_collection_names(db_name)
+        stop_timestamp = 0.0
+        for collection in data_collections:
+            newest_doc = DBUtils.get_newest_doc(db_name, collection)
+            if newest_doc['timestamp'] > stop_timestamp:
+                stop_timestamp = newest_doc['timestamp']
+        return stop_timestamp

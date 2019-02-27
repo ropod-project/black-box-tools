@@ -42,7 +42,7 @@ class Syncronizer(object):
 
     def get_current_time(self):
         """return the current simulation time
-        :returns: TODO
+        :returns: float
 
         """
         # print(self.current_time)

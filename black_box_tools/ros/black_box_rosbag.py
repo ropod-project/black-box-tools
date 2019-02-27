@@ -25,37 +25,23 @@ class BlackBoxRosbag(object):
         self.topic_managers = []
         self.topic_manager_threads = []
         self.playing = False
-        self.locks = []
 
-    def play(self):
-        '''Takes the collections in the black box database which contain data
-        that can be mapped to ROS messages and publishes the data on the appropriate
-        topics (as specified in the black box metadata).
+        self.start_timestamp = DBUtils.get_db_oldest_doc(self.black_box_db_name)
+        self.stop_timestamp = DBUtils.get_db_newest_doc(self.black_box_db_name)
 
-        '''
         data_collections = DBUtils.get_data_collection_names(self.black_box_db_name)
-
-        # we get the timestamp of the oldest document among the collections
-        # so that we can synchronise the published data
-        start_timestamp = 1e20
-        stop_time = 10
-        current_time = 0
-        for collection in data_collections:
-            oldest_doc = DBUtils.get_oldest_doc(self.black_box_db_name, collection)
-            if oldest_doc['timestamp'] < start_timestamp:
-                start_timestamp = oldest_doc['timestamp']
 
         # create list of locks (each for one topic)
         self.locks = [threading.Lock() for collection in data_collections]
 
         # create syncronizer object and assign it to a thread
-        sync = Syncronizer(
-                start_timestamp, 
+        self.sync = Syncronizer(
+                self.start_timestamp, 
                 self.locks, 
                 time_step=self.time_step,
                 sleep_duration=self.sleep_duration)
-        sync_thread = threading.Thread(target=sync.increment_time)
-        sync_thread.daemon = True
+        self.sync_thread = threading.Thread(target=self.sync.increment_time)
+        self.sync_thread.daemon = True
 
         # create topic_utils object and assign it to a thread for each topic
         for i, collection in enumerate(data_collections):
@@ -71,17 +57,23 @@ class BlackBoxRosbag(object):
                     target=topic_manager.publish_data,
                     kwargs={'dict_msgs': data_cursor,
                            'sync_time': self.sync_time,
-                           'global_clock_start': start_timestamp,
+                           'global_clock_start': self.start_timestamp,
                            'lock': self.locks[i],
-                           'sync': sync })
+                           'sync': self.sync })
             data_thread.daemon = True
             self.topic_manager_threads.append(data_thread)
 
+    def play(self):
+        '''Takes the collections in the black box database which contain data
+        that can be mapped to ROS messages and publishes the data on the appropriate
+        topics (as specified in the black box metadata).
+
+        '''
         print('[black_box_rosbag] Starting replay')
         self.playing = True
         for data_thread in self.topic_manager_threads:
             data_thread.start()
-        sync_thread.start()
+        self.sync_thread.start()
 
     def stop_playing(self):
         '''Interrupts the process of black box data playing.
@@ -93,8 +85,9 @@ class BlackBoxRosbag(object):
 
         for data_thread in self.topic_manager_threads:
             data_thread.join()
+        self.sync_thread.join()
 
     def is_playing(self):
         '''Returns True if data is being played back; returns False otherwise.
         '''
-        return self.playing
+        return self.playing and self.sync.get_current_time() < self.stop_timestamp
