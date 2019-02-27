@@ -68,7 +68,7 @@ class DBUtils(object):
         return docs
 
     @staticmethod
-    def get_doc_cursor(db_name, collection_name, start_time=-1, stop_time=-1):
+    def get_doc_cursor(db_name, collection_name, start_time=-1, stop_time=-1, port=27017):
         '''Returns a cursor for all documents in the specified collection of 
         the given database which have the 'timestamp' value in the given range
 
@@ -79,7 +79,7 @@ class DBUtils(object):
         @param stop_time -- float (stoping time stamp)
 
         '''
-        client = pm.MongoClient()
+        client = pm.MongoClient(port=port)
         database = client[db_name]
         collection = database[collection_name]
 
@@ -93,7 +93,6 @@ class DBUtils(object):
         else:
             docs = collection.find({'timestamp': {'$gte': start_time, '$lte': stop_time}})
         return docs
-
 
     @staticmethod
     def get_collection_metadata(db_name, collection_name):
