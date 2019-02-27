@@ -1,6 +1,7 @@
 import threading
 from black_box_tools.db_utils import DBUtils
 from black_box_tools.ros.topic_utils import TopicUtils
+from black_box_tools.ros.syncronizer import Syncronizer
 
 class BlackBoxRosbag(object):
     '''Mimics the playback functionality of a rosbag for black box data.
@@ -28,16 +29,23 @@ class BlackBoxRosbag(object):
         data_collections = DBUtils.get_data_collection_names(black_box_db_name)
         self.topic_managers = []
         self.topic_manager_threads = []
+        self.locks = []
 
         # we get the timestamp of the oldest document among the collections
         # so that we can synchronise the published data
         start_timestamp = 1e20
+        stop_time = 10
+        current_time = 0
         for collection in data_collections:
             oldest_doc = DBUtils.get_oldest_doc(black_box_db_name, collection)
             if oldest_doc['timestamp'] < start_timestamp:
                 start_timestamp = oldest_doc['timestamp']
 
-        for collection in data_collections:
+        self.locks = [threading.Lock() for collection in data_collections]
+        sync = Syncronizer(start_timestamp, self.locks, sleep_duration=1.0)
+        sync_thread = threading.Thread(target=sync.increment_time)
+        sync_thread.daemon = True
+        for i, collection in enumerate(data_collections):
             collection_metadata = DBUtils.get_collection_metadata(black_box_db_name, collection)
             topic_name = collection_metadata['ros']['topic_name']
             msg_type = collection_metadata['ros']['msg_type']
@@ -46,10 +54,14 @@ class BlackBoxRosbag(object):
             self.topic_managers.append(topic_manager)
 
             data_cursor = DBUtils.get_doc_cursor(black_box_db_name, collection)
-            data_thread = threading.Thread(target=topic_manager.publish_data,
-                                           kwargs={'dict_msgs': data_cursor,
-                                                   'sync_time': sync_time,
-                                                   'global_clock_start': start_timestamp})
+            data_thread = threading.Thread(
+                    target=topic_manager.publish_data,
+                    kwargs={'dict_msgs': data_cursor,
+                           'sync_time': sync_time,
+                           'global_clock_start': start_timestamp,
+                           'lock': self.locks[i],
+                           'sync': sync
+                           })
             data_thread.daemon = True
             self.topic_manager_threads.append(data_thread)
 
@@ -57,6 +69,7 @@ class BlackBoxRosbag(object):
         self.playing = True
         for data_thread in self.topic_manager_threads:
             data_thread.start()
+        sync_thread.start()
 
     def stop_playing(self):
         '''Interrupts the process of black box data playing.

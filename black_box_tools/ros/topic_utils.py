@@ -30,7 +30,7 @@ class TopicUtils(object):
         self.topic_pub = rospy.Publisher(topic, msg_type, queue_size=queue_size)
         self.publishing_data = False
 
-    def publish_data(self, dict_msgs, sync_time=True, global_clock_start=0.):
+    def publish_data(self, dict_msgs, sync_time=True, global_clock_start=0., lock=None, sync=None):
         '''Publishes a list of black box data items to self.topic. If "sync_time"
         is set to True, synchronises the messages based on the timestamps
         of the data items.
@@ -66,7 +66,7 @@ class TopicUtils(object):
                         # we find the delay between two consecutive messages and sleep
                         next_msg_time = dict_msgs[i+1]['timestamp']
                         msg_time_delta = next_msg_time - current_msg_time
-                        rospy.sleep(msg_time_delta)
+                        # rospy.sleep(msg_time_delta)
                         current_msg_time = next_msg_time
                 self.publish_dict(dict_msgs[-1])
                 self.publishing_data = False
@@ -81,20 +81,34 @@ class TopicUtils(object):
                 msg_time_delta = dict_msg['timestamp'] - global_clock_start
                 rospy.sleep(msg_time_delta)
 
-                current_msg_time = dict_msg['timestamp']
+                # current_msg_time = dict_msg['timestamp']
+                next_msg_time = dict_msg['timestamp']
                 self.publishing_data = True
-                while dict_msg:
+                print(lock)
+                while dict_msg :
                     if not self.publishing_data:
                         break
 
-                    self.publish_dict(dict_msg)
-                    if sync_time:
-                        # we find the delay between two consecutive messages and sleep
-                        dict_msg = next(dict_msgs)
-                        next_msg_time = dict_msg['timestamp']
-                        msg_time_delta = next_msg_time - current_msg_time
-                        rospy.sleep(msg_time_delta)
-                        current_msg_time = next_msg_time
+                    # print("waiting for lock")
+                    with lock :
+                        # print("acquired lock")
+                        print(sync.get_current_time())
+                        while next_msg_time < sync.get_current_time() :
+                            self.publish_dict(dict_msg)
+                            dict_msg = next(dict_msgs)
+                            next_msg_time = dict_msg['timestamp']
+                # while dict_msg:
+                #     if not self.publishing_data:
+                #         break
+
+                #     self.publish_dict(dict_msg)
+                #     if sync_time:
+                #         # we find the delay between two consecutive messages and sleep
+                #         dict_msg = next(dict_msgs)
+                #         next_msg_time = dict_msg['timestamp']
+                #         msg_time_delta = next_msg_time - current_msg_time
+                #         rospy.sleep(msg_time_delta)
+                #         current_msg_time = next_msg_time
             except StopIteration:
                 if dict_msg:
                     self.publish_dict(dict_msg)
@@ -115,6 +129,7 @@ class TopicUtils(object):
 
         '''
         msg = self.__dict_to_msg(dict_msg)
+        print(dict_msg['timestamp'])
         if msg:
             self.topic_pub.publish(msg)
         else:
