@@ -13,12 +13,12 @@ class Syncronizer(object):
     @author Dharmin B.
     """
 
-    def __init__(self, start_timestamp=0.0, locks=[], timestep=1.0, sleep_duration=0.05):
+    def __init__(self, start_timestamp=0.0, locks=[], time_step=1.0, sleep_duration=0.05):
         self.current_time = start_timestamp
         self.locks = locks
-        self.timestep = timestep
+        self.time_step = time_step
         self.sleep_duration = sleep_duration
-        print(self.current_time, self.locks, self.timestep)
+        print(self.current_time, self.locks, self.time_step)
 
     def increment_time(self):
         """increment the simulation time with timestep and wait for all 
@@ -34,7 +34,7 @@ class Syncronizer(object):
             print("Current time", self.current_time)
             for lock in self.locks :
                 lock.acquire()
-            self.current_time += self.timestep
+            self.current_time += self.time_step
             time.sleep(self.sleep_duration)
             for lock in self.locks :
                 lock.release()
