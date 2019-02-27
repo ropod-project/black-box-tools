@@ -16,7 +16,7 @@ class TopicUtils(object):
 
     Note: Only a direct mapping between black box data and ROS messages is currently supported.
 
-    @author Alex Mitrevski
+    @author Alex Mitrevski, Dharmin B.
     @contact aleksandar.mitrevski@h-brs.de
 
     '''
@@ -46,6 +46,8 @@ class TopicUtils(object):
                                      argument needs to be passed so that
                                      message publishing can be time synchronised
                                      based on a global clock (default -1.)
+        @param lock -- Lock object from multithreading lib (for syncronising msgs)
+        @param sync -- Syncronizer obj (for syncronising msgs across diff topics)
 
         '''
         if isinstance(dict_msgs, list):
@@ -81,34 +83,17 @@ class TopicUtils(object):
                 msg_time_delta = dict_msg['timestamp'] - global_clock_start
                 rospy.sleep(msg_time_delta)
 
-                # current_msg_time = dict_msg['timestamp']
                 next_msg_time = dict_msg['timestamp']
                 self.publishing_data = True
-                print(lock)
                 while dict_msg :
                     if not self.publishing_data:
                         break
 
-                    # print("waiting for lock")
                     with lock :
-                        # print("acquired lock")
-                        print(sync.get_current_time())
                         while next_msg_time < sync.get_current_time() :
                             self.publish_dict(dict_msg)
                             dict_msg = next(dict_msgs)
                             next_msg_time = dict_msg['timestamp']
-                # while dict_msg:
-                #     if not self.publishing_data:
-                #         break
-
-                #     self.publish_dict(dict_msg)
-                #     if sync_time:
-                #         # we find the delay between two consecutive messages and sleep
-                #         dict_msg = next(dict_msgs)
-                #         next_msg_time = dict_msg['timestamp']
-                #         msg_time_delta = next_msg_time - current_msg_time
-                #         rospy.sleep(msg_time_delta)
-                #         current_msg_time = next_msg_time
             except StopIteration:
                 if dict_msg:
                     self.publish_dict(dict_msg)
@@ -129,7 +114,6 @@ class TopicUtils(object):
 
         '''
         msg = self.__dict_to_msg(dict_msg)
-        print(dict_msg['timestamp'])
         if msg:
             self.topic_pub.publish(msg)
         else:

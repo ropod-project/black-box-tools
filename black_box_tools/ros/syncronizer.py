@@ -10,6 +10,7 @@ class Syncronizer(object):
     @param timestep -- the simulation will increment with this duration each time
     @param sleep_duration -- float (duration to sleep after aquiring all locks)
 
+    @author Dharmin B.
     """
 
     def __init__(self, start_timestamp=0.0, locks=[], timestep=1.0, sleep_duration=0.05):

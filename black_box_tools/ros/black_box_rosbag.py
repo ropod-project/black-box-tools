@@ -6,7 +6,7 @@ from black_box_tools.ros.syncronizer import Syncronizer
 class BlackBoxRosbag(object):
     '''Mimics the playback functionality of a rosbag for black box data.
 
-    @author Alex Mitrevski
+    @author Alex Mitrevski, Dharmin B.
     @contact aleksandar.mitrevski@h-brs.de
 
     '''
@@ -41,16 +41,20 @@ class BlackBoxRosbag(object):
             if oldest_doc['timestamp'] < start_timestamp:
                 start_timestamp = oldest_doc['timestamp']
 
+        # create list of locks (each for one topic)
         self.locks = [threading.Lock() for collection in data_collections]
-        sync = Syncronizer(start_timestamp, self.locks, sleep_duration=1.0)
+        # create syncronizer object and assign it to a thread
+        sync = Syncronizer(start_timestamp, self.locks, sleep_duration=0.8)
         sync_thread = threading.Thread(target=sync.increment_time)
         sync_thread.daemon = True
+
+        # create topic_utils object and assign it to a thread for each topic
         for i, collection in enumerate(data_collections):
             collection_metadata = DBUtils.get_collection_metadata(black_box_db_name, collection)
-            topic_name = collection_metadata['ros']['topic_name']
-            msg_type = collection_metadata['ros']['msg_type']
-            direct_msg_mapping = collection_metadata['ros']['direct_msg_mapping']
-            topic_manager = TopicUtils(topic_name, msg_type, direct_msg_mapping)
+            topic_manager = TopicUtils(
+                    collection_metadata['ros']['topic_name'],
+                    collection_metadata['ros']['msg_type'],
+                    collection_metadata['ros']['direct_msg_mapping'])
             self.topic_managers.append(topic_manager)
 
             data_cursor = DBUtils.get_doc_cursor(black_box_db_name, collection)
@@ -60,8 +64,7 @@ class BlackBoxRosbag(object):
                            'sync_time': sync_time,
                            'global_clock_start': start_timestamp,
                            'lock': self.locks[i],
-                           'sync': sync
-                           })
+                           'sync': sync })
             data_thread.daemon = True
             self.topic_manager_threads.append(data_thread)
 
