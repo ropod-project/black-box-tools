@@ -21,13 +21,20 @@ class BlackBoxRosbag(object):
         self.sync_time = kwargs.get('sync_time', True)
         self.time_step = kwargs.get('time_step', 1.0)
         self.sleep_duration = kwargs.get('sleep_duration', 0.5)
+        actual_start_time = DBUtils.get_db_oldest_doc(self.black_box_db_name)
+        actual_stop_time = DBUtils.get_db_newest_doc(self.black_box_db_name)
+        self.start_timestamp = kwargs.get('start_time', actual_start_time)
+        self.stop_timestamp = kwargs.get('stop_time', actual_stop_time)
+        if actual_start_time > self.start_timestamp or \
+                actual_stop_time < self.stop_timestamp or \
+                self.start_timestamp > self.stop_timestamp :
+            print("WARNING: Incorrect start or stop time. Using default duration")
+            self.start_timestamp = actual_start_time
+            self.stop_timestamp = actual_stop_time
 
         self.topic_managers = []
         self.topic_manager_threads = []
         self.playing = False
-
-        self.start_timestamp = DBUtils.get_db_oldest_doc(self.black_box_db_name)
-        self.stop_timestamp = DBUtils.get_db_newest_doc(self.black_box_db_name)
 
         data_collections = DBUtils.get_data_collection_names(self.black_box_db_name)
 
@@ -52,7 +59,11 @@ class BlackBoxRosbag(object):
                     collection_metadata['ros']['direct_msg_mapping'])
             self.topic_managers.append(topic_manager)
 
-            data_cursor = DBUtils.get_doc_cursor(self.black_box_db_name, collection)
+            data_cursor = DBUtils.get_doc_cursor(
+                    self.black_box_db_name, 
+                    collection, 
+                    self.start_timestamp, 
+                    self.stop_timestamp)
             data_thread = threading.Thread(
                     target=topic_manager.publish_data,
                     kwargs={'dict_msgs': data_cursor,

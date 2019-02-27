@@ -68,19 +68,32 @@ class DBUtils(object):
         return docs
 
     @staticmethod
-    def get_doc_cursor(db_name, collection_name):
-        '''Returns a cursor for all documents in the specified collection of the given database
+    def get_doc_cursor(db_name, collection_name, start_time=-1, stop_time=-1):
+        '''Returns a cursor for all documents in the specified collection of 
+        the given database which have the 'timestamp' value in the given range
 
         Keyword arguments:
         @param db_name -- name of a MongoDB database
         @param collection_name -- name of a collection from which to take data
+        @param start_time -- float (starting time stamp)
+        @param stop_time -- float (stoping time stamp)
 
         '''
         client = pm.MongoClient()
-        db = client[db_name]
-        collection = db[collection_name]
-        doc_cursor = collection.find({})
-        return doc_cursor
+        database = client[db_name]
+        collection = database[collection_name]
+
+        docs = {}
+        if start_time == -1 and stop_time == -1:
+            docs = collection.find({})
+        elif start_time == -1:
+            docs = collection.find({'timestamp': {'$lte': stop_time}})
+        elif stop_time == -1:
+            docs = collection.find({'timestamp': {'$gte': start_time}})
+        else:
+            docs = collection.find({'timestamp': {'$gte': start_time, '$lte': stop_time}})
+        return docs
+
 
     @staticmethod
     def get_collection_metadata(db_name, collection_name):

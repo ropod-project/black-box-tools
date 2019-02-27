@@ -18,7 +18,6 @@ class Syncronizer(object):
         self.locks = locks
         self.time_step = time_step
         self.sleep_duration = sleep_duration
-        print(self.current_time, self.locks, self.time_step)
 
     def increment_time(self):
         """increment the simulation time with timestep and wait for all 
@@ -29,7 +28,6 @@ class Syncronizer(object):
         :returns: None
 
         """
-        print("inside increment_time")
         while True:
             print("Current time", self.current_time)
             for lock in self.locks :
