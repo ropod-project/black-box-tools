@@ -75,8 +75,7 @@ class BlackBoxRosbag(object):
             self.topic_manager_threads.append(data_thread)
 
     def play(self):
-        '''Takes the collections in the black box database which contain data
-        that can be mapped to ROS messages and publishes the data on the appropriate
+        '''starts publishing the data on the appropriate
         topics (as specified in the black box metadata).
 
         '''
@@ -86,13 +85,14 @@ class BlackBoxRosbag(object):
             data_thread.start()
         self.sync_thread.start()
 
-    def stop_playing(self):
+    def stop(self):
         '''Interrupts the process of black box data playing.
         '''
         print('[black_box_rosbag] Stopping replay')
         self.playing = False
         for topic_manager in self.topic_managers:
             topic_manager.stop_publishing()
+        self.sync.stop_syncing()
 
         for data_thread in self.topic_manager_threads:
             data_thread.join()

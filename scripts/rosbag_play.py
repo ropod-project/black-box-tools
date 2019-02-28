@@ -2,6 +2,7 @@
 import sys
 import yaml
 import os.path
+import curses
 import rospy
 
 from black_box_tools.ros.black_box_rosbag import BlackBoxRosbag
@@ -40,6 +41,33 @@ def get_desired_duration(start_time, stop_time) :
             print("Unable to convert to float. Using default")
     return start_time+start_offset, start_time+stop_offset
 
+def curses_func(stdscr) :
+    """curses friendly function. All curses related functions are called here.
+    This makes the rest of the code safe from curses mess ups (if any occurs)
+    Pressing SpaceBar toggles between rosbag playing and pausing
+
+    """
+    stdscr.nodelay(True)
+    start_time = rosbag.start_timestamp
+    stop_time = rosbag.stop_timestamp
+    duration = stop_time - start_time
+    while rosbag.is_playing() and not rospy.is_shutdown():
+        c = stdscr.getch()
+        curses.flushinp()
+        stdscr.clear()
+        miny, minx = stdscr.getbegyx()
+        maxy, maxx = stdscr.getmaxyx()
+        pause_status = "PAUSED" if rosbag.sync.is_paused else "RUNNING"
+        current_time = rosbag.sync.get_current_time()
+        string = "[ "+pause_status+" ] Time: "+str(current_time)
+        string_2 = "Rosbag time: "+str(current_time - start_time)+" / "+str(duration)
+        stdscr.addstr(maxy-miny-3, 0, string)
+        stdscr.addstr(maxy-miny-2, 0, string_2)
+        if c == ord(' ') :
+            rosbag.sync.toggle_pause()
+        rospy.sleep(0.5)
+        stdscr.refresh()
+
 if __name__ == '__main__':
     rospy.init_node('rosbag_play')
     config_param = get_config_param()
@@ -63,8 +91,7 @@ if __name__ == '__main__':
             sleep_duration=config_param['sleep_duration'])
     try:
         rosbag.play()
-        while rosbag.is_playing() and not rospy.is_shutdown():
-            rospy.sleep(0.05)
+        curses.wrapper(curses_func) # wait till rosbag finishes & show status
     except (KeyboardInterrupt, SystemExit):
         rospy.loginfo("Stopping rosbag play")
-        rosbag.stop_playing()
+        rosbag.stop()

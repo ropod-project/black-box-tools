@@ -18,6 +18,8 @@ class Syncronizer(object):
         self.locks = locks
         self.time_step = time_step
         self.sleep_duration = sleep_duration
+        self.syncing = True
+        self.is_paused = False
 
     def increment_time(self):
         """increment the simulation time with timestep and wait for all 
@@ -28,12 +30,13 @@ class Syncronizer(object):
         :returns: None
 
         """
-        while True:
-            print("Current time", self.current_time)
+        while self.syncing:
             for lock in self.locks :
                 lock.acquire()
             self.current_time += self.time_step
             time.sleep(self.sleep_duration)
+            while self.is_paused and self.syncing:
+                time.sleep(self.sleep_duration)
             for lock in self.locks :
                 lock.release()
 
@@ -46,3 +49,17 @@ class Syncronizer(object):
         # print(self.current_time)
         return self.current_time
 
+    def stop_syncing(self):
+        """change the self.syncing variable to False. This will stop the while 
+        loop in increment_time.
+        :returns: None
+
+        """
+        self.syncing = False
+
+    def toggle_pause(self) :
+        """toggle is_paused class variable. This pauses the publishing of msgs.
+        :returns: None
+
+        """
+        self.is_paused = not self.is_paused
