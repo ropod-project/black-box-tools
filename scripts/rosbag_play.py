@@ -43,7 +43,8 @@ def get_desired_duration(start_time, stop_time) :
 
 def curses_func(stdscr) :
     """curses friendly function. All curses related functions are called here.
-    This makes the rest of the code safe from curses mess ups (if any occurs)
+    This makes the rest of the code safe from curses mess ups (if any occurs:
+    refer to  https://docs.python.org/3/library/curses.html#curses.wrapper)
     Pressing SpaceBar toggles between rosbag playing and pausing
 
     """
