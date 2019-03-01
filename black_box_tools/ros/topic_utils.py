@@ -16,7 +16,7 @@ class TopicUtils(object):
 
     Note: Only a direct mapping between black box data and ROS messages is currently supported.
 
-    @author Alex Mitrevski
+    @author Alex Mitrevski, Dharmin B.
     @contact aleksandar.mitrevski@h-brs.de
 
     '''
@@ -30,14 +30,13 @@ class TopicUtils(object):
         self.topic_pub = rospy.Publisher(topic, msg_type, queue_size=queue_size)
         self.publishing_data = False
 
-    def publish_data(self, dict_msgs, sync_time=True, global_clock_start=0.):
+    def publish_data(self, dict_msgs, sync_time=True, global_clock_start=0., lock=None, sync=None):
         '''Publishes a list of black box data items to self.topic. If "sync_time"
         is set to True, synchronises the messages based on the timestamps
         of the data items.
 
         Keyword arguments:
-        @param dict_msgs -- either a list of black box data item dictionaries
-                            or a pymongo.cursor.Cursor instance for retrieving
+        @param dict_msgs -- pymongo.cursor.Cursor instance for retrieving
                             data item dictionaries
         @param sync_time -- indicates whether the time between the published
                             messages should be synchronised based on the
@@ -46,61 +45,33 @@ class TopicUtils(object):
                                      argument needs to be passed so that
                                      message publishing can be time synchronised
                                      based on a global clock (default -1.)
+        @param lock -- Lock object from multithreading lib (for syncronising msgs)
+        @param sync -- Syncronizer obj (for syncronising msgs across diff topics)
 
         '''
-        if isinstance(dict_msgs, list):
-            if dict_msgs:
-                self.publishing_data = True
+        dict_msg = {}
+        try:
+            dict_msg = next(dict_msgs)
 
-                # we sleep until it's time to publish the first message
-                msg_time_delta = dict_msgs[0]['timestamp'] - global_clock_start
-                rospy.sleep(msg_time_delta)
+            # we sleep until it's time to publish the first message
+            msg_time_delta = dict_msg['timestamp'] - global_clock_start
+            rospy.sleep(msg_time_delta)
 
-                current_msg_time = dict_msgs[0]['timestamp']
-                for i in range(len(dict_msgs)-1):
-                    if not self.publishing_data:
-                        break
+            next_msg_time = dict_msg['timestamp']
+            self.publishing_data = True
+            while dict_msg :
+                if not self.publishing_data:
+                    break
 
-                    self.publish_dict(dict_msgs[i])
-                    if sync_time:
-                        # we find the delay between two consecutive messages and sleep
-                        next_msg_time = dict_msgs[i+1]['timestamp']
-                        msg_time_delta = next_msg_time - current_msg_time
-                        rospy.sleep(msg_time_delta)
-                        current_msg_time = next_msg_time
-                self.publish_dict(dict_msgs[-1])
-                self.publishing_data = False
-            else:
-                print('[publish_data] dict_msgs empty; nothing to publish')
-        elif isinstance(dict_msgs, pm.cursor.Cursor):
-            dict_msg = {}
-            try:
-                dict_msg = next(dict_msgs)
-
-                # we sleep until it's time to publish the first message
-                msg_time_delta = dict_msg['timestamp'] - global_clock_start
-                rospy.sleep(msg_time_delta)
-
-                current_msg_time = dict_msg['timestamp']
-                self.publishing_data = True
-                while dict_msg:
-                    if not self.publishing_data:
-                        break
-
-                    self.publish_dict(dict_msg)
-                    if sync_time:
-                        # we find the delay between two consecutive messages and sleep
+                with lock :
+                    while next_msg_time < sync.get_current_time() :
+                        self.publish_dict(dict_msg)
                         dict_msg = next(dict_msgs)
                         next_msg_time = dict_msg['timestamp']
-                        msg_time_delta = next_msg_time - current_msg_time
-                        rospy.sleep(msg_time_delta)
-                        current_msg_time = next_msg_time
-            except StopIteration:
-                if dict_msg:
-                    self.publish_dict(dict_msg)
-                    self.publishing_data = False
-        else:
-            print('[publish_data] dict_msgs has to be either a list or a pymongo.cursor.Cursor')
+        except StopIteration:
+            if dict_msg:
+                self.publish_dict(dict_msg)
+                self.publishing_data = False
 
     def stop_publishing(self):
         '''Indicates that publishing should be stopped by changing self.publishing_data.

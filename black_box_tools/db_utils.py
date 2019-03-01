@@ -68,19 +68,31 @@ class DBUtils(object):
         return docs
 
     @staticmethod
-    def get_doc_cursor(db_name, collection_name):
-        '''Returns a cursor for all documents in the specified collection of the given database
+    def get_doc_cursor(db_name, collection_name, start_time=-1, stop_time=-1, port=27017):
+        '''Returns a cursor for all documents in the specified collection of 
+        the given database which have the 'timestamp' value in the given range
 
         Keyword arguments:
         @param db_name -- name of a MongoDB database
         @param collection_name -- name of a collection from which to take data
+        @param start_time -- float (starting time stamp)
+        @param stop_time -- float (stoping time stamp)
 
         '''
-        client = pm.MongoClient()
-        db = client[db_name]
-        collection = db[collection_name]
-        doc_cursor = collection.find({})
-        return doc_cursor
+        client = pm.MongoClient(port=port)
+        database = client[db_name]
+        collection = database[collection_name]
+
+        docs = {}
+        if start_time == -1 and stop_time == -1:
+            docs = collection.find({})
+        elif start_time == -1:
+            docs = collection.find({'timestamp': {'$lte': stop_time}})
+        elif stop_time == -1:
+            docs = collection.find({'timestamp': {'$gte': start_time}})
+        else:
+            docs = collection.find({'timestamp': {'$gte': start_time, '$lte': stop_time}})
+        return docs
 
     @staticmethod
     def get_collection_metadata(db_name, collection_name):
@@ -111,3 +123,56 @@ class DBUtils(object):
         collection = db[collection_name]
         doc = collection.find_one(sort=[('timestamp', pm.ASCENDING)])
         return doc
+
+    @staticmethod
+    def get_newest_doc(db_name, collection_name):
+        '''Returns the newest document in the given collection name
+
+        Keyword arguments:
+        @param db_name -- name of a MongoDB database
+        @param collection_name -- name of a collection
+
+        '''
+        client = pm.MongoClient()
+        db = client[db_name]
+        collection = db[collection_name]
+        doc = collection.find_one(sort=[('timestamp', pm.DESCENDING)])
+        return doc
+
+    @staticmethod
+    def get_db_oldest_doc(db_name):
+        """get the oldest record in the mongo db and return the corresponding
+        timestamp
+
+        Keyword arguments:
+        @param db_name -- name of a MongoDB database
+
+        @returns: float
+
+        """
+        data_collections = DBUtils.get_data_collection_names(db_name)
+        start_timestamp = float('inf')
+        for collection in data_collections:
+            oldest_doc = DBUtils.get_oldest_doc(db_name, collection)
+            if oldest_doc['timestamp'] < start_timestamp:
+                start_timestamp = oldest_doc['timestamp']
+        return start_timestamp
+
+    @staticmethod
+    def get_db_newest_doc(db_name):
+        """get the newest record in the mongo db and return the corresponding
+        timestamp
+
+        Keyword arguments:
+        @param db_name -- name of a MongoDB database
+
+        @returns: float
+
+        """
+        data_collections = DBUtils.get_data_collection_names(db_name)
+        stop_timestamp = 0.0
+        for collection in data_collections:
+            newest_doc = DBUtils.get_newest_doc(db_name, collection)
+            if newest_doc['timestamp'] > stop_timestamp:
+                stop_timestamp = newest_doc['timestamp']
+        return stop_timestamp
