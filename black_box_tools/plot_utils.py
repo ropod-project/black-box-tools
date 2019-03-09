@@ -84,11 +84,12 @@ class PlotUtils(object):
         event_annotation_color -- color of event annotation lines (default 'g')
 
         '''
-        try:
-            assert data.shape[1] == len(data_labels)
-        except AssertionError:
-            print('The length of data_labels should match the number of columns in data')
-            return
+        if data_labels:
+            try:
+                assert data.shape[1] == len(data_labels)
+            except AssertionError:
+                print('The length of data_labels should match the number of columns in data')
+                return
 
         fig.add_subplot(*subplot_params)
 
