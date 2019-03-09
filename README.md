@@ -35,7 +35,7 @@ Plots planar base velocity commands, namely:
 
 # black_box_utils
 
-A Python package implementing various utilities for working with black box data. There are two scripts that are part of this package: `data_utils` and `db_utils`.
+A Python package implementing various utilities for working with black box data. There are three scripts that are part of this package: `data_utils`, `db_utils`, and `plot_utils`.
 
 ## db_utils
 
@@ -50,3 +50,9 @@ Defines a `DBUtils` class with the following static methods:
 Defines a `DataUtils` class with the following static methods:
 
 * `get_all_measurements`: Returns all measurements of a single variables (that potentially has multiple instances - e.g. one instance per wheel)
+
+## plot_utils
+
+Defines a `PlotUtils` class with the following static methods:
+* `subplot_data`: Plots a single time series on a subplot (and potentially annotates any events of interest)
+* `subplot_data_lists`: Plots multiple time series on a single subplot (and potentially annotates any events of interest)
