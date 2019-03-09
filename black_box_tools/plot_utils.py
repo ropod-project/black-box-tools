@@ -10,7 +10,8 @@ class PlotUtils(object):
                      x_label: str, y_label: str,
                      event_timestamps: list=None,
                      data_label: str=None,
-                     fontsize: int=30) -> None:
+                     fontsize: int=30,
+                     event_annotation_color='g') -> None:
         '''Plots a given time series data on a subplot.
 
         Keyword arguments:
@@ -23,11 +24,12 @@ class PlotUtils(object):
         y_label -- y axis label
         event_timestamps -- optional list of timestamps for data
                             annotation; the annotations are plotted as
-                            green lines at the given timestamps
+                            lines at the given timestamps
                             (default None, in which case there are no annotations)
         data_label -- optional label for the plotted data; if a label is given,
                       a legend is added to the plot (default None)
         fontsize -- fontsize for the x and y axes labels (default 30)
+        event_annotation_color -- color of event annotation lines (default 'g')
 
         '''
         fig.add_subplot(*subplot_params)
@@ -41,7 +43,7 @@ class PlotUtils(object):
         # we add event annotations to the plot if there are any events
         if event_timestamps:
             plt.plot([event_timestamps, event_timestamps],
-                     [np.min(data), np.max(data)], 'g')
+                     [np.min(data), np.max(data)], event_annotation_color)
 
         plt.xlabel(x_label, fontsize=fontsize)
         plt.ylabel(y_label, fontsize=fontsize)
@@ -57,7 +59,8 @@ class PlotUtils(object):
                            x_label: str, y_label: str,
                            event_timestamps: list=None,
                            data_labels: list=None,
-                           fontsize: int=30) -> None:
+                           fontsize: int=30,
+                           event_annotation_color='g') -> None:
         '''Plots multiple time series on a single subplot.
 
         Keyword arguments:
@@ -78,12 +81,15 @@ class PlotUtils(object):
                        if this parameter is passed, a legend is added to the plot
                        (default None)
         fontsize -- fontsize for the x and y axes labels (default 30)
+        event_annotation_color -- color of event annotation lines (default 'g')
 
         '''
-        try:
-            assert data.shape[1] == len(data_labels)
-        except AssertionError:
-            print('The length of data_labels should match the number of columns in data')
+        if data_labels:
+            try:
+                assert data.shape[1] == len(data_labels)
+            except AssertionError:
+                print('The length of data_labels should match the number of columns in data')
+                return
 
         fig.add_subplot(*subplot_params)
 
@@ -98,7 +104,7 @@ class PlotUtils(object):
         # we add event annotations to the plot if there are any events
         if event_timestamps:
             plt.plot([event_timestamps, event_timestamps],
-                     [np.min(data), np.max(data)], 'g')
+                     [np.min(data), np.max(data)], event_annotation_color)
 
         plt.xlabel(x_label, fontsize=fontsize)
         plt.ylabel(y_label, fontsize=fontsize)
