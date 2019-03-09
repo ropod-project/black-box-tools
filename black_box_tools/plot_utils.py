@@ -84,6 +84,7 @@ class PlotUtils(object):
             assert data.shape[1] == len(data_labels)
         except AssertionError:
             print('The length of data_labels should match the number of columns in data')
+            return
 
         fig.add_subplot(*subplot_params)
 
