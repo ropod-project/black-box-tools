@@ -1,8 +1,13 @@
 import numpy as np
+import scipy.signal as signal
+
+class Filters(object):
+    MEDIAN = 'median'
 
 class DataUtils(object):
     @staticmethod
-    def get_all_measurements(data_dicts_list, var_name, number_of_item_instances=-1):
+    def get_all_measurements(data_dicts_list, var_name, number_of_item_instances=-1,
+                             data_filter=None, filter_window_size=3):
         '''If there is only a single instance of a variable, "number_of_item_instances"
         should either not be passed or should have the value -1; in this case,
         the function returns a numpy array of shape (len(data_dicts_list),)
@@ -25,6 +30,10 @@ class DataUtils(object):
         @param number_of_item_instances -- number of instances of the variable
                                            in each data dictionary (default -1, in which
                                            case the variable is ignored)
+        @param data_filter -- filter to apply to the data
+                              (default None, in which case the raw data are returned)
+        @param filter_window_size -- window size for the filter; only used if
+                                     data_filter is not None (default 3)
 
         '''
         number_of_docs = len(data_dicts_list)
@@ -35,10 +44,35 @@ class DataUtils(object):
                 item_var_name = var_name.replace('*', str(i))
                 item_data = np.array([DataUtils.get_var_value(doc, item_var_name)
                                       for doc in data_dicts_list])
+                if data_filter:
+                    item_data = DataUtils.filter_data(item_data, data_filter, filter_window_size)
                 data[:, i] = item_data
         else:
             data = np.array([DataUtils.get_var_value(doc, var_name) for doc in data_dicts_list])
+            if data_filter:
+                data = DataUtils.filter_data(data, data_filter, filter_window_size)
         return data
+
+    @staticmethod
+    def filter_data(data, data_filter=Filters.MEDIAN, window_size=3):
+        '''Filters "data" using "data_filter" and returns the filtered array.
+        The value of "data_filter" should be one of the values specified
+        in the data_utils.Filters enum.
+
+        Note: Only Filters.MEDIAN is currently supported.
+
+        Keyword arguments:
+        @param data -- a one-dimensional numpy array of measurements
+        @param data_filter -- filter to apply to the data (default 'median')
+        @param window_size -- windows size for the filter (default 3)
+
+        '''
+        filtered_data = np.array(data)
+        if data_filter == Filters.MEDIAN:
+            filtered_data = signal.medfilt(data, kernel_size=window_size)
+        else:
+            print('[filter_data] Unknown filter {0} specified'.format(data_filter))
+        return filtered_data
 
     @staticmethod
     def get_var_value(item_dict, var_name):
