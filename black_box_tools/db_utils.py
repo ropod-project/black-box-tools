@@ -60,7 +60,7 @@ class DBUtils(object):
         @param collection_name -- name of a collection from which to take data
 
         '''
-        return DBUtils.get_docs(db_name, collecion_name)
+        return DBUtils.get_docs(db_name, collection_name)
 
     @staticmethod
     def get_docs(db_name, collecion_name, start_time=-1, stop_time=-1):
