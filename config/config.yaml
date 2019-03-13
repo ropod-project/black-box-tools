@@ -2,4 +2,5 @@
 sync_time: True
 time_step: 1.0
 sleep_duration: 0.5
+event_playback_duration: 5
 db_name: "logs"

@@ -101,4 +101,4 @@ class BlackBoxRosbag(object):
     def is_playing(self):
         '''Returns True if data is being played back; returns False otherwise.
         '''
-        return self.playing and self.sync.get_current_time() < self.stop_timestamp
+        return self.playing and self.sync.get_current_time() <= self.stop_timestamp
