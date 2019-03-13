@@ -42,7 +42,7 @@ def get_desired_duration(start_time, stop_time) :
             print("Unable to convert to float. Using default")
     return start_time+start_offset, start_time+stop_offset
 
-def choose_event(events, default_event_num):
+def choose_event(events, default_event_num=1):
     """Ask user to choose an event from a list of events.
 
     :events: list of dicts (events dictionaries)
@@ -74,7 +74,6 @@ def play_rosbag(start_time, stop_time):
     :returns: None
 
     """
-    print(start_time, stop_time)
     rosbag = BlackBoxRosbag(
             db_name=db_name, 
             start_time=start_time,
@@ -112,7 +111,6 @@ def curses_func(stdscr, rosbag) :
         string_2 = "Rosbag time: "+str(current_time - start_time)+" / "+str(duration)
         stdscr.addstr(maxy-miny-3, 0, string)
         stdscr.addstr(maxy-miny-2, 0, string_2)
-        stdscr.addstr(maxy-miny-5, 0, str(start_time)+" "+str(stop_time))
         if c == ord(' ') :
             rosbag.sync.toggle_pause()
         rospy.sleep(0.5)
@@ -134,7 +132,8 @@ if __name__ == '__main__':
             if '-e' in sys.argv[2:] or '--events' in sys.argv[2:] :
                 run_events = True
 
-    if run_events :
+    if run_events and 'ros_ropod_event' in DBUtils.get_data_collection_names(db_name) \
+        and len(DBUtils.get_all_docs(db_name, 'ros_ropod_event')) > 0:
         events = DBUtils.get_all_docs(db_name, 'ros_ropod_event')
         chosen_event_index = choose_event(events, 1)
         while chosen_event_index != 0 :
