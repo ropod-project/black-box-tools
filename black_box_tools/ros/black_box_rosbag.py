@@ -21,8 +21,8 @@ class BlackBoxRosbag(object):
         self.sync_time = kwargs.get('sync_time', True)
         self.time_step = kwargs.get('time_step', 1.0)
         self.sleep_duration = kwargs.get('sleep_duration', 0.5)
-        actual_start_time = DBUtils.get_db_oldest_doc(self.black_box_db_name)
-        actual_stop_time = DBUtils.get_db_newest_doc(self.black_box_db_name)
+        actual_start_time = DBUtils.get_db_oldest_timestamp(self.black_box_db_name)
+        actual_stop_time = DBUtils.get_db_newest_timestamp(self.black_box_db_name)
         self.start_timestamp = kwargs.get('start_time', actual_start_time)
         self.stop_timestamp = kwargs.get('stop_time', actual_stop_time)
         if actual_start_time > self.start_timestamp or \

@@ -60,12 +60,39 @@ class DBUtils(object):
         @param collection_name -- name of a collection from which to take data
 
         '''
-        client = pm.MongoClient()
-        db = client[db_name]
-        collection = db[collection_name]
-        doc_cursor = collection.find({})
+        return DBUtils.get_docs(db_name, collecion_name)
+
+    @staticmethod
+    def get_docs(db_name, collecion_name, start_time=-1, stop_time=-1):
+        """Returns all documents contained in the specific collection of the
+        given database within given time duration
+
+        @param db_name -- string (name of MongoDB database) 
+        @param collecion_name -- string (name of a collection from that db)
+        @param start_time -- float (start time stamp)
+        @param stop_time -- float (stop time stamp)
+
+        """
+        doc_cursor = DBUtils.get_doc_cursor(db_name, collecion_name, start_time, stop_time)
         docs = [doc for doc in doc_cursor]
         return docs
+
+    @staticmethod
+    def get_docs_of_last_n_secs(db_name, collecion_name, n=3):
+        """Return documents from given collection name of last n seconds from 
+        given db name
+
+        Keyword arguments:
+        @param db_name -- name of a MongoDB database
+        @param collection_name -- name of a collection from which to take data
+        @param n -- float (duration in seconds)
+
+        @returns list of dicts
+
+        """
+        stop_time = DBUtils.get_db_newest_timestamp(db_name)
+        start_time = stop_time - n
+        return DBUtils.get_docs(db_name, collecion_name, start_time, stop_time)
 
     @staticmethod
     def get_doc_cursor(db_name, collection_name, start_time=-1, stop_time=-1, port=27017):
@@ -140,7 +167,7 @@ class DBUtils(object):
         return doc
 
     @staticmethod
-    def get_db_oldest_doc(db_name):
+    def get_db_oldest_timestamp(db_name):
         """get the oldest record in the mongo db and return the corresponding
         timestamp
 
@@ -159,7 +186,7 @@ class DBUtils(object):
         return start_timestamp
 
     @staticmethod
-    def get_db_newest_doc(db_name):
+    def get_db_newest_timestamp(db_name):
         """get the newest record in the mongo db and return the corresponding
         timestamp
 

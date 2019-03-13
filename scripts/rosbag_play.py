@@ -80,8 +80,8 @@ if __name__ == '__main__':
     else :
         db_name = sys.argv[1]
 
-    start_time = DBUtils.get_db_oldest_doc(db_name)
-    stop_time = DBUtils.get_db_newest_doc(db_name)
+    start_time = DBUtils.get_db_oldest_timestamp(db_name)
+    stop_time = DBUtils.get_db_newest_timestamp(db_name)
     start_time, stop_time = get_desired_duration(start_time, stop_time)
     rosbag = BlackBoxRosbag(
             db_name=db_name, 
