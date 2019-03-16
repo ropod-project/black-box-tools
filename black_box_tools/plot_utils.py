@@ -43,7 +43,7 @@ class PlotUtils(object):
         # we add event annotations to the plot if there are any events
         if not event_timestamps is None:
             plt.plot([event_timestamps, event_timestamps],
-                     [np.min(data), np.max(data)], event_annotation_color)
+                     [np.nanmin(data), np.nanmax(data)], event_annotation_color)
 
         plt.xlabel(x_label, fontsize=fontsize)
         plt.ylabel(y_label, fontsize=fontsize)
@@ -104,7 +104,7 @@ class PlotUtils(object):
         # we add event annotations to the plot if there are any events
         if not event_timestamps is None:
             plt.plot([event_timestamps, event_timestamps],
-                     [np.min(data), np.max(data)], event_annotation_color)
+                     [np.nanmin(data), np.nanmax(data)], event_annotation_color)
 
         plt.xlabel(x_label, fontsize=fontsize)
         plt.ylabel(y_label, fontsize=fontsize)
