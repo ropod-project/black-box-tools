@@ -40,7 +40,6 @@ class Syncronizer(object):
             for lock in self.locks :
                 lock.release()
 
-
     def get_current_time(self):
         """return the current simulation time
         :returns: float

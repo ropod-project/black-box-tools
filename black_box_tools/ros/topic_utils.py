@@ -68,6 +68,7 @@ class TopicUtils(object):
                         self.publish_dict(dict_msg)
                         dict_msg = next(dict_msgs)
                         next_msg_time = dict_msg['timestamp']
+                        rospy.sleep(0.005)
         except StopIteration:
             if dict_msg:
                 self.publish_dict(dict_msg)

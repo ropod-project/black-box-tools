@@ -84,6 +84,9 @@ def play_rosbag(start_time, stop_time):
     try:
         rosbag.play()
         curses.wrapper(curses_func, rosbag) # wait till rosbag finishes & show status
+        # while rosbag.is_playing() and not rospy.is_shutdown():
+        #     current_time = rosbag.sync.get_current_time()
+        #     rospy.sleep(0.05)
     except (KeyboardInterrupt, SystemExit):
         rospy.loginfo("Stopping rosbag play")
         rosbag.stop()
@@ -113,7 +116,7 @@ def curses_func(stdscr, rosbag) :
         stdscr.addstr(maxy-miny-2, 0, string_2)
         if c == ord(' ') :
             rosbag.sync.toggle_pause()
-        rospy.sleep(0.5)
+        rospy.sleep(0.005)
         stdscr.refresh()
 
 if __name__ == '__main__':
