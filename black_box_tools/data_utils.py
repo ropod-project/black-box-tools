@@ -1,3 +1,5 @@
+import time
+import ast
 import numpy as np
 import scipy.signal as signal
 
@@ -239,3 +241,192 @@ class DataUtils(object):
                     var_list = DataUtils.get_flattened_variable_names(list_item, new_var_name)
                     variables.extend(var_list)
         return variables
+
+    @staticmethod
+    def expand_var_names(variables, index_count):
+        '''Generates a new list of variable names from "variables" such that
+        the * character in each entry of "variables" is replaced by a zero-based index
+        (the number of indices is determined by "index_count").
+
+        Example:
+        If "variables" is the list ["var1/*", "var2/*"], and "index_count" is 3, the
+        resulting list will be ["var1/0", "var1/1", "var1/2", "var2/0", "var2/1", "var2/2"].
+
+        Keyword arguments:
+        variables -- a list of variable names including a * as an index replacement
+        index_count -- number of times each variable should be expanded
+
+        '''
+        expanded_vars = [var.replace('*', str(i))
+                         for var in variables
+                         for i in range(index_count)]
+        return expanded_vars
+
+    @staticmethod
+    def get_bb_query_msg_template():
+        '''Returns a dictionary of the form
+        {
+            'header':
+            {
+                'metamodel': 'ropod-msg-schema.json'
+                'version': '1.0.0'
+            },
+            'payload': {}
+        }
+        which represents a template for a black box query message.
+
+        '''
+        query_msg = {}
+        query_msg['header'] = {}
+        query_msg['header']['metamodel'] = 'ropod-msg-schema.json'
+        query_msg['header']['version'] = '1.0.0'
+        query_msg['payload'] = {}
+        return query_msg
+
+    @staticmethod
+    def get_bb_query_msg(sender_id, bb_id, variable_list, start_query_time, end_query_time):
+        '''Returns a black box data query message.
+
+        Keyword arguments:
+        sender_id -- ID of the user that queries the data (typically a session ID)
+        bb_id -- ID of the black box that should be queried (of the form black_box_<xxx>)
+        variable_list -- a list of variables whose values are queried
+        start_query_time -- UNIX timestamp denoting the start data query time
+        end_query_time -- UNIX timestamp denoting the end data query time
+
+        '''
+        query_msg = DataUtils.get_bb_query_msg_template()
+        query_msg['header']['type'] = 'DATA-QUERY'
+        query_msg['header']['timestamp'] = time.time()
+        query_msg['payload']['senderId'] = sender_id
+        query_msg['payload']['blackBoxId'] = bb_id
+        query_msg['payload']['variables'] = variable_list
+        query_msg['payload']['startTime'] = start_query_time
+        query_msg['payload']['endTime'] = end_query_time
+        return query_msg
+
+    @staticmethod
+    def get_bb_latest_data_query_msg(sender_id, bb_id, variable_list):
+        '''Returns a black box latest data query message.
+
+        Keyword arguments:
+        sender_id -- ID of the user that queries the data (typically a session ID)
+        bb_id -- ID of the black box that should be queried (of the form black_box_<xxx>)
+        variable_list -- a list of variables whose values are queried
+
+        '''
+        query_msg = DataUtils.get_bb_query_msg_template()
+        query_msg['header']['type'] = 'LATEST-DATA-QUERY'
+        query_msg['header']['timestamp'] = time.time()
+        query_msg['payload']['senderId'] = sender_id
+        query_msg['payload']['blackBoxId'] = bb_id
+        query_msg['payload']['variables'] = variable_list
+        return query_msg
+
+    @staticmethod
+    def parse_bb_variable_msg(bb_variable_msg):
+        '''Returns a nested dictionary that reconstructs the structure of the
+        data represented by the variables in bb_variable_msg["payload"]["variableList"]
+
+        Example:
+        If bb_variable_msg["payload"]["variableList"] is the nested dictionary
+        {
+            'ros': ['ros_cmd_vel/linear/z', 'ros_cmd_vel/linear/x', 'ros_cmd_vel/angular/x',
+                    'ros_cmd_vel/angular/z', 'ros_cmd_vel/angular/y', 'ros_cmd_vel/linear/y',
+                    'ros_pose/x', 'ros_pose_y', 'ros_pose_z'],
+            'zyre': ['zyre_pose/x', 'zyre_pose_y', 'zyre_pose_z']
+        }
+        the resulting nested dictionary will be
+        {
+            'ros_cmd_vel':
+            {
+                'linear':
+                {
+                    'x': {}
+                    'y': {},
+                    'z': {}
+                },
+                'angular':
+                {
+                    'x': {}
+                    'y': {},
+                    'z': {}
+                }
+            },
+            'ros_pose':
+            {
+                'x': {},
+                'y': {},
+                'z': {}
+            },
+            'zyre_pose':
+            {
+                'x': {},
+                'y': {},
+                'z': {}
+            }
+        }
+
+        Keyword arguments:
+        bb_variable_msg -- a black box variable query response
+
+        '''
+        variables = dict()
+        if bb_variable_msg:
+            for variable_names in bb_variable_msg['payload']['variableList'].values():
+                if variable_names:
+                    for full_variable_name in variable_names:
+                        slash_indices = [0]
+                        current_variable_dict = variables
+                        for i, char in enumerate(full_variable_name):
+                            if char == '/':
+                                slash_indices.append(i+1)
+                                name_component = full_variable_name[slash_indices[-2]:
+                                                                    slash_indices[-1]-1]
+                                if name_component not in current_variable_dict:
+                                    current_variable_dict[name_component] = {}
+                                current_variable_dict = current_variable_dict[name_component]
+                        name_component = full_variable_name[slash_indices[-1]:]
+                        current_variable_dict[name_component] = {}
+        return variables
+
+    @staticmethod
+    def parse_bb_data_msg(bb_data_msg):
+        '''Returns a tuple (variables, data), where variables is a list of
+        variables that were queried and data a list of variable values, namely
+        data[i] is a list of [timestamp, value] lists corresponding to variables[i]
+
+        Keyword arguments:
+        bb_data_msg -- a black box data query response
+
+        '''
+        variables = []
+        data = []
+        if bb_data_msg:
+            for var_name, var_data in bb_data_msg['payload']['dataList'].items():
+                variables.append(var_name)
+                variable_data_list = [ast.literal_eval(item) for item in var_data]
+                data.append(variable_data_list)
+        return (variables, data)
+
+    @staticmethod
+    def parse_bb_latest_data_msg(bb_data_msg):
+        '''Returns a tuple (variables, data), where variables is a list of
+        variables that were queried and data a list of the latest variable values,
+        namely data[i] is a list [timestamp, value] corresponding to
+        the latest value of variables[i] along with its timestamp
+
+        Keyword arguments:
+        bb_data_msg -- a black box latest data query response
+
+        '''
+        variables = []
+        data = []
+        if bb_data_msg:
+            for var_name, var_data in bb_data_msg['payload']['dataList'].items():
+                variables.append(var_name)
+                if var_data:
+                    data.append(ast.literal_eval(var_data))
+                else:
+                    data.append(None)
+        return (variables, data)
