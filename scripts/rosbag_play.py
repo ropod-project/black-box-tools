@@ -5,6 +5,7 @@ import os.path
 import curses
 import rospy
 import time
+from termcolor import colored
 
 from black_box_tools.ros.black_box_rosbag import BlackBoxRosbag
 from black_box_tools.db_utils import DBUtils
@@ -34,13 +35,13 @@ def get_desired_duration(start_time, stop_time) :
         try:
             start_offset = float(user_start)
         except Exception as e:
-            print("Unable to convert to float. Using default")
+            print(colored("Unable to convert to float. Using default", 'red'))
     user_stop = input("Enter stop time. Press enter for default: ")
     if user_stop != '' :
         try:
             stop_offset = float(user_stop)
         except Exception as e:
-            print("Unable to convert to float. Using default")
+            print(colored("Unable to convert to float. Using default", 'red'))
     return start_time+start_offset, start_time+stop_offset
 
 def choose_event(events, default_event_num=1):
@@ -60,10 +61,10 @@ def choose_event(events, default_event_num=1):
     if user_inp.isnumeric() :
         chosen_event = int(user_inp)
         if chosen_event > len(events) or chosen_event < 0 :
-            print("Invalid event selected. Using default.")
+            print(colored("Invalid event selected. Using default.", 'red'))
             chosen_event = default_event_num
     else :
-        print("Invalid event selected. Using default.")
+        print(colored("Invalid event selected. Using default.", 'red'))
         chosen_event = default_event_num
     return chosen_event
 
@@ -86,7 +87,7 @@ def play_rosbag(start_time, stop_time):
         rosbag.play()
         curses.wrapper(curses_func, rosbag) # wait till rosbag finishes & show status
     except (KeyboardInterrupt, SystemExit):
-        print("Interrupting rosbag play")
+        print(colored("Interrupting rosbag play", 'red'))
     rosbag.stop()
 
 def curses_func(stdscr, rosbag) :
@@ -126,8 +127,8 @@ if __name__ == '__main__':
     run_events = False
 
     if len(sys.argv) < 2:
-        print('\nUsage: python3 rosbag_play.py [db_name]')
-        print('No database name provided. Using default.\n')
+        print(colored('\nUsage: python3 rosbag_play.py [db_name]', 'yellow'))
+        print(colored('No database name provided. Using default.\n', 'yellow'))
         db_name = config_param['db_name']
     else :
         db_name = sys.argv[1]
