@@ -26,11 +26,10 @@ class TopicUtils(object):
         self.direct_msg_mapping = direct_msg_mapping
         self.queue_size = queue_size
 
-        msg_type = self.__get_msg_type(self.msg_type_name)
-        self.topic_pub = rospy.Publisher(topic, msg_type, queue_size=queue_size)
-        self.publishing_data = False
+        self.msg_type = self.__get_msg_type(self.msg_type_name)
 
-    def publish_data(self, dict_msgs, sync_time=True, global_clock_start=0., lock=None, sync=None):
+    def publish_data(self, dict_msgs, sync_time=True, global_clock_start=0., 
+            lock=None, queue=None):
         '''Publishes a list of black box data items to self.topic. If "sync_time"
         is set to True, synchronises the messages based on the timestamps
         of the data items.
@@ -46,38 +45,29 @@ class TopicUtils(object):
                                      message publishing can be time synchronised
                                      based on a global clock (default -1.)
         @param lock -- Lock object from multithreading lib (for syncronising msgs)
-        @param sync -- Syncronizer obj (for syncronising msgs across diff topics)
+        @param queue -- Queue obj (for accessing the global current time)
 
         '''
+        rospy.init_node(self.topic.replace("/", "") + "_publisher")
+        self.topic_pub = rospy.Publisher(self.topic, self.msg_type, queue_size=self.queue_size)
         dict_msg = {}
         try:
             dict_msg = next(dict_msgs)
-
-            # we sleep until it's time to publish the first message
-            msg_time_delta = dict_msg['timestamp'] - global_clock_start
-            rospy.sleep(msg_time_delta)
-
             next_msg_time = dict_msg['timestamp']
-            self.publishing_data = True
+            current_time = 0
             while dict_msg :
-                if not self.publishing_data:
-                    break
-
+                if not queue.empty() :
+                    current_time = queue.get()
+                    if current_time == -1 :
+                        break
                 with lock :
-                    while next_msg_time < sync.get_current_time() :
+                    while next_msg_time < current_time:
                         self.publish_dict(dict_msg)
                         dict_msg = next(dict_msgs)
                         next_msg_time = dict_msg['timestamp']
-                        rospy.sleep(0.005)
-        except StopIteration:
-            if dict_msg:
-                self.publish_dict(dict_msg)
-                self.publishing_data = False
-
-    def stop_publishing(self):
-        '''Indicates that publishing should be stopped by changing self.publishing_data.
-        '''
-        self.publishing_data = False
+                        rospy.sleep(1e-10)
+        except (StopIteration, ValueError, TypeError) as e:
+            pass
 
     def publish_dict(self, dict_msg):
         '''Publishes the given item to self.topic.

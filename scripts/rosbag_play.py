@@ -4,6 +4,7 @@ import yaml
 import os.path
 import curses
 import rospy
+import time
 
 from black_box_tools.ros.black_box_rosbag import BlackBoxRosbag
 from black_box_tools.db_utils import DBUtils
@@ -84,12 +85,9 @@ def play_rosbag(start_time, stop_time):
     try:
         rosbag.play()
         curses.wrapper(curses_func, rosbag) # wait till rosbag finishes & show status
-        # while rosbag.is_playing() and not rospy.is_shutdown():
-        #     current_time = rosbag.sync.get_current_time()
-        #     rospy.sleep(0.05)
     except (KeyboardInterrupt, SystemExit):
-        rospy.loginfo("Stopping rosbag play")
-        rosbag.stop()
+        print("Interrupting rosbag play")
+    rosbag.stop()
 
 def curses_func(stdscr, rosbag) :
     """curses friendly function. All curses related functions are called here.
@@ -102,32 +100,34 @@ def curses_func(stdscr, rosbag) :
     start_time = rosbag.start_timestamp
     stop_time = rosbag.stop_timestamp
     duration = stop_time - start_time
-    while rosbag.is_playing() and not rospy.is_shutdown():
+    while rosbag.is_playing() :
         c = stdscr.getch()
         curses.flushinp()
         stdscr.clear()
         miny, minx = stdscr.getbegyx()
         maxy, maxx = stdscr.getmaxyx()
-        pause_status = "PAUSED" if rosbag.sync.is_paused else "RUNNING"
-        current_time = rosbag.sync.get_current_time()
-        string = "[ "+pause_status+" ] Time: "+str(current_time)
+        current_time = rosbag.get_current_time()
+        string = "[ "+rosbag.status+" ] Time: "+str(current_time)
         string_2 = "Rosbag time: "+str(current_time - start_time)+" / "+str(duration)
         stdscr.addstr(maxy-miny-3, 0, string)
         stdscr.addstr(maxy-miny-2, 0, string_2)
         if c == ord(' ') :
-            rosbag.sync.toggle_pause()
-        rospy.sleep(0.005)
+            if rosbag.status == "PAUSED" :
+                rosbag.play()
+            else :
+                rosbag.pause()
+        time.sleep(config_param['sleep_duration'])
         stdscr.refresh()
 
 if __name__ == '__main__':
-    rospy.init_node('rosbag_play')
+    # rospy.init_node('rosbag_play')
     config_param = get_config_param()
 
     run_events = False
 
     if len(sys.argv) < 2:
-        rospy.logwarn('\nUsage: python3 rosbag_play.py [db_name]')
-        rospy.logwarn('No database name provided. Using default.\n')
+        print('\nUsage: python3 rosbag_play.py [db_name]')
+        print('No database name provided. Using default.\n')
         db_name = config_param['db_name']
     else :
         db_name = sys.argv[1]

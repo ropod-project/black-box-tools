@@ -1,6 +1,6 @@
 # Config file for black_box_tools
 sync_time: True
-time_step: 1.0
-sleep_duration: 0.5
+time_step: 0.5
+sleep_duration: 0.2
 event_playback_duration: 5
 db_name: "logs"
