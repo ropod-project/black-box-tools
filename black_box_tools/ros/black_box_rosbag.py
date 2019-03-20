@@ -1,4 +1,5 @@
-import threading
+# import threading
+import multiprocessing
 from black_box_tools.db_utils import DBUtils
 from black_box_tools.ros.topic_utils import TopicUtils
 from black_box_tools.ros.syncronizer import Syncronizer
@@ -31,24 +32,32 @@ class BlackBoxRosbag(object):
             print("WARNING: Incorrect start or stop time. Using default duration")
             self.start_timestamp = actual_start_time
             self.stop_timestamp = actual_stop_time
+        self.current_time = self.start_timestamp
+
+        self.status = "PAUSED"
 
         self.topic_managers = []
         self.topic_manager_threads = []
-        self.playing = False
 
         data_collections = DBUtils.get_data_collection_names(self.black_box_db_name)
 
-        # create list of locks (each for one topic)
-        self.locks = [threading.Lock() for collection in data_collections]
+        # create list of locks for syncing (each for one topic)
+        self.locks = [multiprocessing.Lock() for collection in data_collections]
+        # create list of queues to access global current time (maintained by syncronizer)
+        self.queues = [multiprocessing.Queue() for collection in data_collections]
+        self.queues.append(multiprocessing.Queue()) # for current(parent) process
+
+        sync_pause_conn, self.rosbag_pause_conn = multiprocessing.Pipe(duplex=True)
 
         # create syncronizer object and assign it to a thread
         self.sync = Syncronizer(
                 self.start_timestamp, 
                 self.locks, 
+                self.queues,
+                sync_pause_conn,
                 time_step=self.time_step,
                 sleep_duration=self.sleep_duration)
-        self.sync_thread = threading.Thread(target=self.sync.increment_time)
-        self.sync_thread.daemon = True
+        self.sync_thread = multiprocessing.Process(target=self.sync.increment_time, daemon=True)
 
         # create topic_utils object and assign it to a thread for each topic
         for i, collection in enumerate(data_collections):
@@ -64,41 +73,70 @@ class BlackBoxRosbag(object):
                     collection, 
                     self.start_timestamp, 
                     self.stop_timestamp)
-            data_thread = threading.Thread(
+            data_thread = multiprocessing.Process(
                     target=topic_manager.publish_data,
                     kwargs={'dict_msgs': data_cursor,
                            'sync_time': self.sync_time,
                            'global_clock_start': self.start_timestamp,
                            'lock': self.locks[i],
-                           'sync': self.sync })
-            data_thread.daemon = True
+                           'queue': self.queues[i]},
+                    daemon=True)
+            # data_thread.daemon = True
             self.topic_manager_threads.append(data_thread)
-
-    def play(self):
-        '''starts publishing the data on the appropriate
-        topics (as specified in the black box metadata).
-
-        '''
-        print('[black_box_rosbag] Starting replay')
-        self.playing = True
         for data_thread in self.topic_manager_threads:
             data_thread.start()
         self.sync_thread.start()
 
+    def play(self):
+        """Start/resume the playing of the rosbag messages. It sends a message to the 
+        Syncronizer process. Syncronizer gets out of a while loop and starts 
+        normal fucntioning until a pause message is sent or process is stopped.
+
+        :returns None
+
+        """
+        print('[black_box_rosbag] Starting replay')
+        self.rosbag_pause_conn.send((True, False))
+        self.status = "RUNNING"
+
     def stop(self):
-        '''Interrupts the process of black box data playing.
-        '''
+        """Interrupts the process of black box data playing.
+
+        :returns: None
+        """
         print('[black_box_rosbag] Stopping replay')
-        self.playing = False
-        for topic_manager in self.topic_managers:
-            topic_manager.stop_publishing()
-        self.sync.stop_syncing()
+        self.rosbag_pause_conn.send((False, False))
 
         for data_thread in self.topic_manager_threads:
             data_thread.join()
         self.sync_thread.join()
 
+    def pause(self):
+        """Pause the playing of the rosbag messages. It sends a message to the 
+        Syncronizer process. Syncronizer goes into a while loop until it receives
+        another message
+
+        :returns: None
+
+        """
+        self.rosbag_pause_conn.send((True, True))
+        self.status = "PAUSED"
+
+    def get_current_time(self):
+        """Get current time from queue if available.
+        Otherwise return the class variable
+        :returns: Float (global current time)
+
+        """
+        while not self.queues[-1].empty():
+            self.current_time = self.queues[-1].get()
+        return self.current_time
+
     def is_playing(self):
-        '''Returns True if data is being played back; returns False otherwise.
-        '''
-        return self.playing and self.sync.get_current_time() <= self.stop_timestamp
+        """Returns True if data is being played back; returns False otherwise.
+
+        :returns: bool (if the rosbag is playing or not) 
+        NOTE: Not to confuse with playing/paused. That is self.status
+
+        """
+        return self.current_time <= self.stop_timestamp

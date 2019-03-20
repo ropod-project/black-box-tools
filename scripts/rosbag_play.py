@@ -4,6 +4,8 @@ import yaml
 import os.path
 import curses
 import rospy
+import time
+from termcolor import colored
 
 from black_box_tools.ros.black_box_rosbag import BlackBoxRosbag
 from black_box_tools.db_utils import DBUtils
@@ -33,13 +35,13 @@ def get_desired_duration(start_time, stop_time) :
         try:
             start_offset = float(user_start)
         except Exception as e:
-            print("Unable to convert to float. Using default")
+            print(colored("Unable to convert to float. Using default", 'red'))
     user_stop = input("Enter stop time. Press enter for default: ")
     if user_stop != '' :
         try:
             stop_offset = float(user_stop)
         except Exception as e:
-            print("Unable to convert to float. Using default")
+            print(colored("Unable to convert to float. Using default", 'red'))
     return start_time+start_offset, start_time+stop_offset
 
 def choose_event(events, default_event_num=1):
@@ -59,10 +61,10 @@ def choose_event(events, default_event_num=1):
     if user_inp.isnumeric() :
         chosen_event = int(user_inp)
         if chosen_event > len(events) or chosen_event < 0 :
-            print("Invalid event selected. Using default.")
+            print(colored("Invalid event selected. Using default.", 'red'))
             chosen_event = default_event_num
     else :
-        print("Invalid event selected. Using default.")
+        print(colored("Invalid event selected. Using default.", 'red'))
         chosen_event = default_event_num
     return chosen_event
 
@@ -85,8 +87,8 @@ def play_rosbag(start_time, stop_time):
         rosbag.play()
         curses.wrapper(curses_func, rosbag) # wait till rosbag finishes & show status
     except (KeyboardInterrupt, SystemExit):
-        rospy.loginfo("Stopping rosbag play")
-        rosbag.stop()
+        print(colored("Interrupting rosbag play", 'red'))
+    rosbag.stop()
 
 def curses_func(stdscr, rosbag) :
     """curses friendly function. All curses related functions are called here.
@@ -99,32 +101,34 @@ def curses_func(stdscr, rosbag) :
     start_time = rosbag.start_timestamp
     stop_time = rosbag.stop_timestamp
     duration = stop_time - start_time
-    while rosbag.is_playing() and not rospy.is_shutdown():
+    while rosbag.is_playing() :
         c = stdscr.getch()
         curses.flushinp()
         stdscr.clear()
         miny, minx = stdscr.getbegyx()
         maxy, maxx = stdscr.getmaxyx()
-        pause_status = "PAUSED" if rosbag.sync.is_paused else "RUNNING"
-        current_time = rosbag.sync.get_current_time()
-        string = "[ "+pause_status+" ] Time: "+str(current_time)
+        current_time = rosbag.get_current_time()
+        string = "[ "+rosbag.status+" ] Time: "+str(current_time)
         string_2 = "Rosbag time: "+str(current_time - start_time)+" / "+str(duration)
         stdscr.addstr(maxy-miny-3, 0, string)
         stdscr.addstr(maxy-miny-2, 0, string_2)
         if c == ord(' ') :
-            rosbag.sync.toggle_pause()
-        rospy.sleep(0.5)
+            if rosbag.status == "PAUSED" :
+                rosbag.play()
+            else :
+                rosbag.pause()
+        time.sleep(config_param['sleep_duration'])
         stdscr.refresh()
 
 if __name__ == '__main__':
-    rospy.init_node('rosbag_play')
+    # rospy.init_node('rosbag_play')
     config_param = get_config_param()
 
     run_events = False
 
     if len(sys.argv) < 2:
-        rospy.logwarn('\nUsage: python3 rosbag_play.py [db_name]')
-        rospy.logwarn('No database name provided. Using default.\n')
+        print(colored('\nUsage: python3 rosbag_play.py [db_name]', 'yellow'))
+        print(colored('No database name provided. Using default.\n', 'yellow'))
         db_name = config_param['db_name']
     else :
         db_name = sys.argv[1]
