@@ -5,6 +5,7 @@ import os.path
 import curses
 import rospy
 import time
+import argparse
 from termcolor import colored
 
 from black_box_tools.ros.black_box_rosbag import BlackBoxRosbag
@@ -126,17 +127,13 @@ if __name__ == '__main__':
 
     run_events = False
 
-    if len(sys.argv) < 2:
-        print(colored('\nUsage: python3 rosbag_play.py [db_name]', 'yellow'))
-        print(colored('No database name provided. Using default.\n', 'yellow'))
-        db_name = config_param['db_name']
-    else :
-        db_name = sys.argv[1]
-        if len(sys.argv) > 2 :
-            if '-e' in sys.argv[2:] or '--events' in sys.argv[2:] :
-                run_events = True
+    parser = argparse.ArgumentParser(description="Play rosbag from mongo db")
+    parser.add_argument('-db', help='name of the mongo db', default=config_param['db_name'])
+    parser.add_argument('-e', '--events', action='store_true', help='Enable events playback')
+    args = parser.parse_args()
+    db_name = args.db
 
-    if run_events and 'ros_ropod_event' in DBUtils.get_data_collection_names(db_name) \
+    if args.events and 'ros_ropod_event' in DBUtils.get_data_collection_names(db_name) \
         and len(DBUtils.get_all_docs(db_name, 'ros_ropod_event')) > 0:
         events = DBUtils.get_all_docs(db_name, 'ros_ropod_event')
         chosen_event_index = choose_event(events, 1)
