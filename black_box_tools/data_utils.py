@@ -405,7 +405,7 @@ class DataUtils(object):
         if bb_data_msg:
             for var_name, var_data in bb_data_msg['payload']['dataList'].items():
                 variables.append(var_name)
-                variable_data_list = [ast.literal_eval(item) for item in var_data]
+                variable_data_list = [DataUtils.safe_literal_eval(item) for item in var_data]
                 data.append(variable_data_list)
         return (variables, data)
 
@@ -426,7 +426,21 @@ class DataUtils(object):
             for var_name, var_data in bb_data_msg['payload']['dataList'].items():
                 variables.append(var_name)
                 if var_data:
-                    data.append(ast.literal_eval(var_data))
+                    data.append(DataUtils.safe_literal_eval(var_data))
                 else:
                     data.append(None)
         return (variables, data)
+
+    @staticmethod
+    def safe_literal_eval(data_str):
+        '''Uses ast.literal_eval to parse the input item. Returns None
+        if literal_eval throws an exception.
+
+        Keyword arguments:
+        data_str: str -- Item to be parsed
+
+        '''
+        try:
+            return ast.literal_eval(data_str)
+        except ValueError:
+            return None
