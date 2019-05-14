@@ -52,6 +52,20 @@ class DBUtils(object):
         return filtered_collection_names
 
     @staticmethod
+    def clear_db(db_name):
+        '''Drop all collections in the given database.
+
+        Keyword arguments:
+        @param db_name -- name of a MongoDB database
+
+        '''
+        client = pm.MongoClient()
+        db = client[db_name]
+        collections = DBUtils.get_data_collection_names(db_name)
+        for collection in collections:
+            db.drop_collection(collection)
+
+    @staticmethod
     def get_all_docs(db_name, collection_name):
         '''Returns all documents contained in the specified collection of the given database
 
