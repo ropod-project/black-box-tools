@@ -68,6 +68,7 @@ class TopicUtils(object):
                         rospy.sleep(1e-10)
         except (StopIteration, ValueError, TypeError) as e:
             pass
+        rospy.signal_shutdown('User stopped execution')
 
     def publish_dict(self, dict_msg):
         '''Publishes the given item to self.topic.
