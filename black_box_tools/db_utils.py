@@ -37,6 +37,32 @@ class DBUtils(object):
             raise
 
     @staticmethod
+    def dump_db(db_name: str, data_dir: str='.', delete_db: bool=True) -> bool:
+        '''Dumps a MongoDB database in the specified directory. If "delete_db"
+        is set, deletes the database after dumping it.
+
+        Keyword arguments:
+        @param db_name: str -- name of the database to be dumped
+        @param data_dir: str -- absolute path of a directory where the dump
+                                should be created (default '.')
+        @param delete_db: bool -- indicates whether to drop the database after
+                                  dumping (default True)
+
+        '''
+        try:
+            # we dump the database
+            command = ['mongodump', '--db', db_name, '--out', data_dir]
+            subprocess.run(command)
+
+            if delete_db:
+                client = pm.MongoClient()
+                client.drop_database(db_name)
+            return True
+        except:
+            print('[restore_db] An error occurred while restoring {0}'.format(data_dir))
+            raise
+
+    @staticmethod
     def get_data_collection_names(db_name: str) -> Sequence[str]:
         '''Returns the names of all black box data collections in the specified database.
 
