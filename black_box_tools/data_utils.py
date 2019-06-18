@@ -77,6 +77,33 @@ class DataUtils(object):
         return filtered_data
 
     @staticmethod
+    def find_correlated_variables(variable_names, measurement_matrix,
+                                  corr_threshold=0.9):
+        '''Returns a list of variable name pairs where each pair
+        (variable_names[i], variable_names[j]) denotes that measurement_matrix[i]
+        and measurement_matrix[j] are correlated. The function assumes that
+        each row reprents a variable and the columns represent variable measurements.
+
+        Keyword arguments:
+        variable_names: Sequence[str] -- a list of variable names
+        measurement_matrix: Sequence[Sequence[float]] -- a numpy matrix of measurements
+                                                         in which each row represents a
+                                                         single variable
+        corr_threshold: float -- correlation coefficient threshold: if the absolute value
+                                 of the coefficient is above the threshold, the
+                                 measurements are assumed to be correlated (default 0.9)
+
+        '''
+        corr_matrix = np.corrcoef(measurement_matrix)
+        correlated_variables = []
+        for i in range(measurement_matrix.shape[0]):
+            for j in range(i+1, measurement_matrix.shape[0]):
+                if abs(corr_matrix[i, j]) > corr_threshold:
+                    correlated_variables.append((variable_names[i],
+                                                 variable_names[j]))
+        return correlated_variables
+
+    @staticmethod
     def get_var_value(item_dict, var_name):
         '''Returns the value of "var_name" in the given dictionary; returns None
         if the variable does not exit in the dictionary. "var_name" is expected
