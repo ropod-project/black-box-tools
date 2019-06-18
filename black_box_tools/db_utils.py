@@ -1,22 +1,24 @@
+from typing import Sequence, Dict
 import subprocess
 import pymongo as pm
 
 class DBUtils(object):
     @staticmethod
-    def restore_db(data_dir, drop_existing_records=True, db_name=None):
+    def restore_db(data_dir: str, drop_existing_records: bool=True,
+                   db_name: str=None) -> bool:
         '''Restores a MongoDB database dumped in the given directory. If "db_name"
         is not passed or is set to None, the name of the restored database
         will be the same as the name of the directory. Returns True if
-        everything goes well; returns False otherwise.
+        everything goes well; raises an exception otherwise.
 
         Keyword arguments:
-        @param data_dir -- absolute path of a directory containing a dumped MongoDB database
-        @param drop_existing_records -- indicates whether to drop any existing records
-                                        if a database with the same name already
-                                        exists (default True)
-        @param db_name -- name of the database for restoring the data (default None,
-                          in which case the database name is the same as the name
-                          of the data directory)
+        @param data_dir: str -- absolute path of a directory containing a dumped MongoDB database
+        @param drop_existing_records: bool -- indicates whether to drop any existing records
+                                              if a database with the same name already
+                                              exists (default True)
+        @param db_name: str -- name of the database for restoring the data (default None,
+                               in which case the database name is the same as the name
+                               of the data directory)
 
         '''
         try:
@@ -30,17 +32,16 @@ class DBUtils(object):
 
             subprocess.run(commands)
             return True
-        except Exception as exc:
+        except:
             print('[restore_db] An error occurred while restoring {0}'.format(data_dir))
-            print(str(exc))
-            return False
+            raise
 
     @staticmethod
-    def get_data_collection_names(db_name):
-        '''Returns the name of all black box data collections in the specified database.
+    def get_data_collection_names(db_name: str) -> Sequence[str]:
+        '''Returns the names of all black box data collections in the specified database.
 
         Keyword arguments:
-        @param db_name -- name of a MongoDB database
+        @param db_name: str -- name of a MongoDB database
 
         '''
         client = pm.MongoClient()
@@ -52,11 +53,11 @@ class DBUtils(object):
         return filtered_collection_names
 
     @staticmethod
-    def clear_db(db_name):
+    def clear_db(db_name: str) -> None:
         '''Drop all collections in the given database.
 
         Keyword arguments:
-        @param db_name -- name of a MongoDB database
+        @param db_name: str -- name of a MongoDB database
 
         '''
         client = pm.MongoClient()
@@ -66,22 +67,23 @@ class DBUtils(object):
             db.drop_collection(collection)
 
     @staticmethod
-    def get_all_docs(db_name, collection_name):
+    def get_all_docs(db_name: str, collection_name: str) -> Sequence[Dict]:
         '''Returns all documents contained in the specified collection of the given database
 
         Keyword arguments:
-        @param db_name -- name of a MongoDB database
-        @param collection_name -- name of a collection from which to take data
+        @param db_name: str -- name of a MongoDB database
+        @param collection_name: str -- name of a collection from which to take data
 
         '''
         return DBUtils.get_docs(db_name, collection_name)
 
     @staticmethod
-    def get_docs(db_name, collecion_name, start_time=-1, stop_time=-1):
+    def get_docs(db_name: str, collecion_name: str,
+                 start_time: float=-1, stop_time: float=-1) -> Sequence[Dict]:
         """Returns all documents contained in the specific collection of the
         given database within given time duration
 
-        @param db_name -- string (name of MongoDB database) 
+        @param db_name -- string (name of MongoDB database)
         @param collecion_name -- string (name of a collection from that db)
         @param start_time -- float (start time stamp)
         @param stop_time -- float (stop time stamp)
@@ -92,16 +94,15 @@ class DBUtils(object):
         return docs
 
     @staticmethod
-    def get_docs_of_last_n_secs(db_name, collecion_name, n=3):
-        """Return documents from given collection name of last n seconds from 
+    def get_docs_of_last_n_secs(db_name: str, collecion_name: str,
+                                n: float=3.) -> Sequence[Dict]:
+        """Return documents from given collection name of last n seconds from
         given db name
 
         Keyword arguments:
-        @param db_name -- name of a MongoDB database
-        @param collection_name -- name of a collection from which to take data
-        @param n -- float (duration in seconds)
-
-        @returns list of dicts
+        @param db_name: str -- name of a MongoDB database
+        @param collection_name: str -- name of a collection from which to take data
+        @param n: float -- duration in seconds (default 3.)
 
         """
         stop_time = DBUtils.get_db_newest_timestamp(db_name)
@@ -109,15 +110,21 @@ class DBUtils(object):
         return DBUtils.get_docs(db_name, collecion_name, start_time, stop_time)
 
     @staticmethod
-    def get_doc_cursor(db_name, collection_name, start_time=-1, stop_time=-1, port=27017):
-        '''Returns a cursor for all documents in the specified collection of 
-        the given database which have the 'timestamp' value in the given range
+    def get_doc_cursor(db_name: str, collection_name: str,
+                       start_time: float=-1., stop_time: float=-1,
+                       port: int=27017) -> pm.cursor.Cursor:
+        '''Returns a cursor for all documents in the specified collection of
+        the given database which have the 'timestamp' value in the given range.
+        If both "start_time" and "end_time" are -1, returns all documents. If
+        only "start_time" is -1, returns all documents up to "end_time". If only
+        "end_time" is -1, returns all documents starting at "start_time".
 
         Keyword arguments:
-        @param db_name -- name of a MongoDB database
-        @param collection_name -- name of a collection from which to take data
-        @param start_time -- float (starting time stamp)
-        @param stop_time -- float (stoping time stamp)
+        @param db_name: str -- name of a MongoDB database
+        @param collection_name: str -- name of a collection from which to take data
+        @param start_time: float -- starting time stamp (default -1.)
+        @param stop_time: float -- stoping time stamp (default -1.)
+        @param port: int -- database port (default 27017)
 
         '''
         client = pm.MongoClient(port=port)
@@ -136,12 +143,12 @@ class DBUtils(object):
         return docs
 
     @staticmethod
-    def get_collection_metadata(db_name, collection_name):
+    def get_collection_metadata(db_name: str, collection_name: str) -> Dict:
         '''Returns the entry of the 'black_box_metadata' collection for the specified collection
 
         Keyword arguments:
-        @param db_name -- name of a MongoDB database
-        @param collection_name -- name of a collection whose metadata should be retrieved
+        @param db_name: str -- name of a MongoDB database
+        @param collection_name: str -- name of a collection whose metadata should be retrieved
 
         '''
         client = pm.MongoClient()
@@ -151,12 +158,12 @@ class DBUtils(object):
         return metadata_doc
 
     @staticmethod
-    def get_oldest_doc(db_name, collection_name):
+    def get_oldest_doc(db_name: str, collection_name: str) -> Dict:
         '''Returns the oldest document in the given collection name
 
         Keyword arguments:
-        @param db_name -- name of a MongoDB database
-        @param collection_name -- name of a collection
+        @param db_name: str -- name of a MongoDB database
+        @param collection_name: str -- name of a collection
 
         '''
         client = pm.MongoClient()
@@ -166,12 +173,12 @@ class DBUtils(object):
         return doc
 
     @staticmethod
-    def get_newest_doc(db_name, collection_name):
+    def get_newest_doc(db_name: str, collection_name: str) -> Dict:
         '''Returns the newest document in the given collection name
 
         Keyword arguments:
-        @param db_name -- name of a MongoDB database
-        @param collection_name -- name of a collection
+        @param db_name: str -- name of a MongoDB database
+        @param collection_name: str -- name of a collection
 
         '''
         client = pm.MongoClient()
@@ -181,14 +188,12 @@ class DBUtils(object):
         return doc
 
     @staticmethod
-    def get_db_oldest_timestamp(db_name):
+    def get_db_oldest_timestamp(db_name: str) -> float:
         """get the oldest record in the mongo db and return the corresponding
         timestamp
 
         Keyword arguments:
-        @param db_name -- name of a MongoDB database
-
-        @returns: float
+        @param db_name: str -- name of a MongoDB database
 
         """
         data_collections = DBUtils.get_data_collection_names(db_name)
@@ -200,14 +205,12 @@ class DBUtils(object):
         return start_timestamp
 
     @staticmethod
-    def get_db_newest_timestamp(db_name):
+    def get_db_newest_timestamp(db_name: str) -> float:
         """get the newest record in the mongo db and return the corresponding
         timestamp
 
         Keyword arguments:
-        @param db_name -- name of a MongoDB database
-
-        @returns: float
+        @param db_name: str -- name of a MongoDB database
 
         """
         data_collections = DBUtils.get_data_collection_names(db_name)
