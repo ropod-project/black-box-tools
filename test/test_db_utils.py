@@ -3,12 +3,14 @@
 import time
 import os
 import subprocess
-import pymongo as pm
 import unittest
+import pymongo as pm
 
 from black_box_tools.db_utils import DBUtils
 
 class TestDBUtils(unittest.TestCase):
+
+    """ Tests for the functions defined in DBUtils class in db_utils.py"""
 
     @classmethod
     def setUpClass(cls):
@@ -63,8 +65,9 @@ class TestDBUtils(unittest.TestCase):
 
     def test_clear_db(self):
         DBUtils.clear_db(db_name=self.test_db_name)
-        db = self.client[self.test_db_name]
-        self.assertListEqual(db.list_collection_names(), ['system.indexes', 'black_box_metadata'])
+        database = self.client[self.test_db_name]
+        self.assertListEqual(database.list_collection_names(),
+                             ['system.indexes', 'black_box_metadata'])
 
     def test_get_all_docs(self):
         docs = DBUtils.get_all_docs(db_name=self.test_db_name,
@@ -72,8 +75,8 @@ class TestDBUtils(unittest.TestCase):
         self.assertEqual(len(docs), 149)
 
     def test_get_docs(self):
-        start_time=1544441409.88607
-        stop_time=1544441411.28594
+        start_time = 1544441409.88607
+        stop_time = 1544441411.28594
         docs = DBUtils.get_docs(db_name=self.test_db_name,
                                 collection_name='ros_ropod_cmd_vel',
                                 start_time=start_time,
@@ -84,12 +87,12 @@ class TestDBUtils(unittest.TestCase):
             self.assertGreaterEqual(doc['timestamp'], start_time)
 
     def test_get_doc_cursor(self):
-        start_time=1544441409.88607
-        stop_time=1544441411.28594
+        start_time = 1544441409.88607
+        stop_time = 1544441411.28594
         doc_cursor = DBUtils.get_doc_cursor(db_name=self.test_db_name,
-                                collection_name='ros_ropod_cmd_vel',
-                                start_time=start_time,
-                                stop_time=stop_time)
+                                            collection_name='ros_ropod_cmd_vel',
+                                            start_time=start_time,
+                                            stop_time=stop_time)
         docs = [doc for doc in doc_cursor]
         self.assertEqual(len(docs), 9)
         for doc in docs:
