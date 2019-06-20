@@ -1,0 +1,8 @@
+pymongo
+PyYAML
+numpy
+matplotlib
+scipy
+argparse
+rospkg
+git+https://github.com/ropod-project/rospy_message_converter.git#egg=rospy_message_converter
