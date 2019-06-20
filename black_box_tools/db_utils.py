@@ -1,3 +1,4 @@
+import os
 from typing import Sequence, Dict
 import subprocess
 import pymongo as pm
@@ -26,12 +27,13 @@ class DBUtils(object):
             if drop_existing_records:
                 commands.append('--drop')
 
-            if db_name:
-                commands.append('--db')
-                commands.append(db_name)
+            if not db_name:
+                db_name = os.path.basename(data_dir)
+            commands.extend(['--db', db_name])
 
-            subprocess.run(commands)
-            return True
+            with open(os.devnull, 'w') as devnull:
+                process = subprocess.run(commands, stdout=devnull, stderr=devnull)
+            return process.returncode == 0
         except:
             print('[restore_db] An error occurred while restoring {0}'.format(data_dir))
             raise
