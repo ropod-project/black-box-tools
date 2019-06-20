@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/ropod-project/black-box-tools.svg?branch=master)](https://travis-ci.org/ropod-project/black-box-tools)
+
 # Summary
 
 A collection of tools for offline processing of data from a robotic black box (as implemented in https://github.com/ropod-project/black-box).
