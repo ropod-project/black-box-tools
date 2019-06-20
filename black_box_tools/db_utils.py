@@ -54,12 +54,13 @@ class DBUtils(object):
         try:
             # we dump the database
             command = ['mongodump', '--db', db_name, '--out', data_dir]
-            subprocess.run(command)
+            with open(os.devnull, 'w') as devnull:
+                process = subprocess.run(command, stdout=devnull, stderr=devnull)
 
             if delete_db:
                 client = pm.MongoClient()
                 client.drop_database(db_name)
-            return True
+            return process.returncode == 0
         except:
             print('[restore_db] An error occurred while restoring {0}'.format(data_dir))
             raise
