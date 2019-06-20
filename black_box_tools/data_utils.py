@@ -1,15 +1,18 @@
+from typing import Tuple, Sequence, Dict
 import time
 import ast
 import numpy as np
 import scipy.signal as signal
+import pymongo as pm
 
 class Filters(object):
     MEDIAN = 'median'
 
 class DataUtils(object):
     @staticmethod
-    def get_all_measurements(data_dicts_list, var_name, number_of_item_instances=-1,
-                             data_filter=None, filter_window_size=3):
+    def get_all_measurements(data_dicts_list: Sequence[Dict],
+                             var_name: str, number_of_item_instances: int=-1,
+                             data_filter: str=None, filter_window_size: int=3) -> Sequence:
         '''If there is only a single instance of a variable, "number_of_item_instances"
         should either not be passed or should have the value -1; in this case,
         the function returns a numpy array of shape (len(data_dicts_list),)
@@ -56,12 +59,15 @@ class DataUtils(object):
         return data
 
     @staticmethod
-    def filter_data(data, data_filter=Filters.MEDIAN, window_size=3):
+    def filter_data(data: Sequence[float],
+                    data_filter: str=Filters.MEDIAN,
+                    window_size: int=3) -> Sequence[float]:
         '''Filters "data" using "data_filter" and returns the filtered array.
         The value of "data_filter" should be one of the values specified
         in the data_utils.Filters enum.
 
-        Note: Only Filters.MEDIAN is currently supported.
+        Note: Only Filters.MEDIAN is currently supported. An AssertionError
+        is raised if an unknown filter is passed as an argument.
 
         Keyword arguments:
         @param data -- a one-dimensional numpy array of measurements
@@ -73,11 +79,39 @@ class DataUtils(object):
         if data_filter == Filters.MEDIAN:
             filtered_data = signal.medfilt(data, kernel_size=window_size)
         else:
-            print('[filter_data] Unknown filter {0} specified'.format(data_filter))
+            raise AssertionError('[filter_data] Unknown filter {0} specified'.format(data_filter))
         return filtered_data
 
     @staticmethod
-    def get_var_value(item_dict, var_name):
+    def find_correlated_variables(variable_names: Sequence[str],
+                                  measurement_matrix: Sequence[Sequence[float]],
+                                  corr_threshold: float=0.9) -> Sequence[Tuple[str, str]]:
+        '''Returns a list of variable name pairs where each pair
+        (variable_names[i], variable_names[j]) denotes that measurement_matrix[i]
+        and measurement_matrix[j] are correlated. The function assumes that
+        each row reprents a variable and the columns represent variable measurements.
+
+        Keyword arguments:
+        variable_names: Sequence[str] -- a list of variable names
+        measurement_matrix: Sequence[Sequence[float]] -- a numpy matrix of measurements
+                                                         in which each row represents a
+                                                         single variable
+        corr_threshold: float -- correlation coefficient threshold: if the absolute value
+                                 of the coefficient is above the threshold, the
+                                 measurements are assumed to be correlated (default 0.9)
+
+        '''
+        corr_matrix = np.corrcoef(measurement_matrix)
+        correlated_variables = []
+        for i in range(measurement_matrix.shape[0]):
+            for j in range(i+1, measurement_matrix.shape[0]):
+                if abs(corr_matrix[i, j]) > corr_threshold:
+                    correlated_variables.append((variable_names[i],
+                                                 variable_names[j]))
+        return correlated_variables
+
+    @staticmethod
+    def get_var_value(item_dict: Dict, var_name: str):
         '''Returns the value of "var_name" in the given dictionary; returns None
         if the variable does not exit in the dictionary. "var_name" is expected
         to be a flattened variable name with items at different levels
@@ -141,7 +175,7 @@ class DataUtils(object):
         return val
 
     @staticmethod
-    def get_variable_list(collection_name, collection):
+    def get_variable_list(collection_name: str, collection: pm.collection.Collection) -> Sequence[str]:
         '''Returns a list of the names of all variables stored in the input collection
 
         Keyword arguments:
@@ -154,7 +188,7 @@ class DataUtils(object):
         return variables
 
     @staticmethod
-    def get_flattened_variable_names(current_dict, current_var_name):
+    def get_flattened_variable_names(current_dict: Dict, current_var_name: str) -> Sequence[str]:
         '''Recursive method that returns a flattened list of the variable names
         in the given dictionary, where variables at different levels are separated by a /.
 
@@ -243,7 +277,7 @@ class DataUtils(object):
         return variables
 
     @staticmethod
-    def expand_var_names(variables, index_count):
+    def expand_var_names(variables: Sequence[str], index_count: int) -> Sequence[str]:
         '''Generates a new list of variable names from "variables" such that
         the * character in each entry of "variables" is replaced by a zero-based index
         (the number of indices is determined by "index_count").
@@ -263,7 +297,7 @@ class DataUtils(object):
         return expanded_vars
 
     @staticmethod
-    def get_bb_query_msg_template():
+    def get_bb_query_msg_template() -> Dict:
         '''Returns a dictionary of the form
         {
             'header':
@@ -284,7 +318,8 @@ class DataUtils(object):
         return query_msg
 
     @staticmethod
-    def get_bb_query_msg(sender_id, bb_id, variable_list, start_query_time, end_query_time):
+    def get_bb_query_msg(sender_id: str, bb_id: str, variable_list: Sequence[str],
+                         start_query_time: str, end_query_time: str) -> Dict:
         '''Returns a black box data query message.
 
         Keyword arguments:
@@ -306,7 +341,8 @@ class DataUtils(object):
         return query_msg
 
     @staticmethod
-    def get_bb_latest_data_query_msg(sender_id, bb_id, variable_list):
+    def get_bb_latest_data_query_msg(sender_id: str, bb_id: str,
+                                     variable_list: Sequence[str]) -> Dict:
         '''Returns a black box latest data query message.
 
         Keyword arguments:
@@ -324,7 +360,7 @@ class DataUtils(object):
         return query_msg
 
     @staticmethod
-    def parse_bb_variable_msg(bb_variable_msg):
+    def parse_bb_variable_msg(bb_variable_msg: Dict) -> Dict:
         '''Returns a nested dictionary that reconstructs the structure of the
         data represented by the variables in bb_variable_msg["payload"]["variableList"]
 
@@ -391,7 +427,7 @@ class DataUtils(object):
         return variables
 
     @staticmethod
-    def parse_bb_data_msg(bb_data_msg):
+    def parse_bb_data_msg(bb_data_msg: Dict) -> Tuple[Sequence[str], Sequence[Sequence]]:
         '''Returns a tuple (variables, data), where variables is a list of
         variables that were queried and data a list of variable values, namely
         data[i] is a list of [timestamp, value] lists corresponding to variables[i]
@@ -410,7 +446,7 @@ class DataUtils(object):
         return (variables, data)
 
     @staticmethod
-    def parse_bb_latest_data_msg(bb_data_msg):
+    def parse_bb_latest_data_msg(bb_data_msg: Dict) -> Tuple[Sequence[str], Sequence[Sequence]]:
         '''Returns a tuple (variables, data), where variables is a list of
         variables that were queried and data a list of the latest variable values,
         namely data[i] is a list [timestamp, value] corresponding to
@@ -432,7 +468,7 @@ class DataUtils(object):
         return (variables, data)
 
     @staticmethod
-    def safe_literal_eval(data_str):
+    def safe_literal_eval(data_str: str):
         '''Uses ast.literal_eval to parse the input item. Returns None
         if literal_eval throws an exception.
 
