@@ -3,6 +3,8 @@ import time
 import ast
 import numpy as np
 import scipy.signal as signal
+import scipy.stats as stats
+from skimage.util import view_as_windows
 import pymongo as pm
 
 class Filters(object):
@@ -125,6 +127,62 @@ class DataUtils(object):
                     correlated_variables.append((variable_names[i],
                                                  variable_names[j]))
         return correlated_variables
+
+    @staticmethod
+    def get_windowed_correlations(variable_names: Sequence[str],
+                                  data: Sequence[Sequence[float]],
+                                  window_size: int=5) -> Tuple[Tuple[str, str],
+                                                               Sequence[Sequence[float]]]:
+        '''Given a list of variable names as well as a 2D data array in which
+        each row represents a variable and the columns are variable measurements,
+        returns a list of variable name pairs and a 2D list of windowed pairwise correlations.
+        In other words, if (variable_names[i], variable_names[j]) is the k-th
+        variable name pair and "correlations" is the resulting array of windowed correlations,
+        then correlations[k][n] represents the correlation between the n-th measurement
+        windows taken from data[i] and data[j] of size "window_size".
+
+        If the measurement windows containt constant measurements, the correlation
+        coefficient is undefined, but the resulting correlation is:
+        * 1 if both measurement windows are constant
+        * 0 if only one of the windows is constant
+
+        Example:
+        If "variable_names" = ["var1", "var2", "var3"],
+            "data" = np.array([[1, 2, 3], [4, 6, 8], [3, 6, 6]]) and
+            "window_size" = 2,
+        the result is
+        * the list [("var1", "var2"), ("var1", "var3"), ("var2", "var3")]
+        * the correlation array [[1, 1], [1, 0], [1, 0]]
+
+        Similarly, if "variable_names" = ["var1", "var2", "var3"],
+            "data" = np.array([[1, 2, 3], [4, 8, 8], [3, 6, 6]]) and
+            "window_size" = 2,
+        the result is
+        * the list [("var1", "var2"), ("var1", "var3"), ("var2", "var3")]
+        * the correlation array [[1, 1], [1, 0], [1, 1]]
+
+        Keyword arguments:
+        variable_names: Sequence[str]: list of variable names
+        data: Sequence[Sequence[float]]: a 2D array in which the i-th row corresponds
+                                         the measurements of variable_names[i]
+        window_size: int -- measurement window size for calculating pairwise correlations
+                            (default 5)
+
+        '''
+        data_windows = np.apply_along_axis(view_as_windows, 1, data, window_size)
+        corr = lambda x: lambda y: abs(stats.pearsonr(x, y)[0]) if (np.std(x) > 1e-5 and np.std(y) > 1e-5) else \
+                                                                1. if (np.std(x) < 1e-5 and np.std(y) < 1e-5) else 0.
+
+        windowed_correlations = []
+        var_pairs = []
+        for i in range(data.shape[0]):
+            corr_partial = [corr(x) for x in data_windows[i]]
+            for j in range(i+1, data.shape[0]):
+                corr_coefs = [corr_partial[k](y) for k, y in enumerate(data_windows[j])]
+                windowed_correlations.append(corr_coefs)
+                var_pairs.append((variable_names[i], variable_names[j]))
+
+        return (var_pairs, np.array(windowed_correlations))
 
     @staticmethod
     def get_var_value(item_dict: Dict, var_name: str):
