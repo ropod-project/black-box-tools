@@ -88,8 +88,15 @@ class DataUtils(object):
                                   corr_threshold: float=0.9) -> Sequence[Tuple[str, str]]:
         '''Returns a list of variable name pairs where each pair
         (variable_names[i], variable_names[j]) denotes that measurement_matrix[i]
-        and measurement_matrix[j] are correlated. The function assumes that
-        each row reprents a variable and the columns represent variable measurements.
+        and measurement_matrix[j] are correlated (based on the Pearson correlation
+        coefficient). The function assumes that each row reprents a variable
+        and the columns represent variable measurements.
+
+        If all measurements of a variable are constant, the function behaves as follows:
+        * two constant signals are perfectly correlated, so they are included in the result
+          even though their correlation coefficient is undefined
+        * the result does not contain pairs of variables one of which is constant
+          and the other one is not (the correlation coefficient is also undefined in this case)
 
         Keyword arguments:
         variable_names: Sequence[str] -- a list of variable names
@@ -102,10 +109,19 @@ class DataUtils(object):
 
         '''
         corr_matrix = np.corrcoef(measurement_matrix)
+        constant_signals = [x < 1e-5 for x in np.apply_along_axis(np.std, 1, measurement_matrix)]
         correlated_variables = []
         for i in range(measurement_matrix.shape[0]):
             for j in range(i+1, measurement_matrix.shape[0]):
-                if abs(corr_matrix[i, j]) > corr_threshold:
+                # if both signals are constant, their correlation coefficient
+                # is undefined, but they are perfectly correlated
+                if constant_signals[i] and constant_signals[j]:
+                    correlated_variables.append((variable_names[i],
+                                                 variable_names[j]))
+                # if neither of the signals are constant and the correlation
+                # coefficient is greater than the specified threshold,
+                # the signals are considered correlated
+                elif not np.isnan(corr_matrix[i, j]) and abs(corr_matrix[i, j]) > corr_threshold:
                     correlated_variables.append((variable_names[i],
                                                  variable_names[j]))
         return correlated_variables
