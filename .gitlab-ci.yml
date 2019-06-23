@@ -5,6 +5,8 @@ before_script:
     - apt-get install -y python3-pip
     - pip3 install --upgrade pip
     - cat requirements.txt | xargs -n 1 -L 1 pip3 install
+services:
+  - mongo
 test:
     script:
         - python3 -m unittest discover -s 'test' -p 'test_*.py'
