@@ -1,4 +1,4 @@
-image: "python:3.5"
+image: "mongo"
 before_script:
     - cat requirements.txt | xargs -n 1 -L 1 pip install
 test:
