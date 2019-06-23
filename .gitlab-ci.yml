@@ -1,6 +1,8 @@
-image: "python:3.5"
+image: "mongo"
 before_script:
-    - cat requirements.txt | xargs -n 1 -L 1 pip install
+    - apt-get update
+    - apt-get install -y python3-pip
+    - cat requirements.txt | xargs -n 1 -L 1 pip3 install
 test:
     script:
-        - python -m unittest discover -s 'test' -p 'test_*.py'
+        - python3 -m unittest discover -s 'test' -p 'test_*.py'
