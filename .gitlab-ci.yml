@@ -1,0 +1,6 @@
+image: "python:3.5"
+before_script:
+    - cat requirements.txt | xargs -n 1 -L 1 pip install
+test:
+    script:
+        - python -m unittest discover -s 'test' -p 'test_*.py'
