@@ -58,7 +58,7 @@ class DBUtils(object):
                 process = subprocess.run(command, stdout=devnull, stderr=devnull)
 
             if delete_db:
-                client = pm.MongoClient()
+                client = DBUtils.get_db_client()
                 client.drop_database(db_name)
             return process.returncode == 0
         except:
@@ -73,7 +73,7 @@ class DBUtils(object):
         @param db_name: str -- name of a MongoDB database
 
         '''
-        client = pm.MongoClient()
+        client = DBUtils.get_db_client()
         db = client[db_name]
         collection_names = db.list_collection_names()
         filtered_collection_names = [collection for collection in collection_names
@@ -89,7 +89,7 @@ class DBUtils(object):
         @param db_name: str -- name of a MongoDB database
 
         '''
-        client = pm.MongoClient()
+        client = DBUtils.get_db_client()
         db = client[db_name]
         collections = DBUtils.get_data_collection_names(db_name)
         for collection in collections:
@@ -140,8 +140,7 @@ class DBUtils(object):
 
     @staticmethod
     def get_doc_cursor(db_name: str, collection_name: str,
-                       start_time: float=-1., stop_time: float=-1,
-                       port: int=27017) -> pm.cursor.Cursor:
+                       start_time: float=-1., stop_time: float=-1) -> pm.cursor.Cursor:
         '''Returns a cursor for all documents in the specified collection of
         the given database which have the 'timestamp' value in the given range.
         If both "start_time" and "end_time" are -1, returns all documents. If
@@ -153,10 +152,9 @@ class DBUtils(object):
         @param collection_name: str -- name of a collection from which to take data
         @param start_time: float -- starting time stamp (default -1.)
         @param stop_time: float -- stoping time stamp (default -1.)
-        @param port: int -- database port (default 27017)
 
         '''
-        client = pm.MongoClient(port=port)
+        client = DBUtils.get_db_client()
         database = client[db_name]
         collection = database[collection_name]
 
@@ -180,7 +178,7 @@ class DBUtils(object):
         @param collection_name: str -- name of a collection whose metadata should be retrieved
 
         '''
-        client = pm.MongoClient()
+        client = DBUtils.get_db_client()
         db = client[db_name]
         collection = db['black_box_metadata']
         metadata_doc = collection.find_one({'collection_name': collection_name})
@@ -195,7 +193,7 @@ class DBUtils(object):
         @param collection_name: str -- name of a collection
 
         '''
-        client = pm.MongoClient()
+        client = DBUtils.get_db_client()
         db = client[db_name]
         collection = db[collection_name]
         doc = collection.find_one(sort=[('timestamp', pm.ASCENDING)])
@@ -210,7 +208,7 @@ class DBUtils(object):
         @param collection_name: str -- name of a collection
 
         '''
-        client = pm.MongoClient()
+        client = DBUtils.get_db_client()
         db = client[db_name]
         collection = db[collection_name]
         doc = collection.find_one(sort=[('timestamp', pm.DESCENDING)])
@@ -249,3 +247,19 @@ class DBUtils(object):
             if newest_doc['timestamp'] > stop_timestamp:
                 stop_timestamp = newest_doc['timestamp']
         return stop_timestamp
+
+    @staticmethod
+    def get_db_client() -> pm.MongoClient:
+        '''Returns a MongoDB client at <host>:<port>. By default,
+        <host> is "localhost" and <port> is 27017, but these values can
+        be overriden by setting the environment variables "DB_HOST" and
+        "DB_PORT" respectively.
+        '''
+        host = 'localhost'
+        port = 27017
+        if 'DB_HOST' in os.environ:
+            host = os.environ['DB_HOST']
+        if 'DB_PORT' in os.environ:
+            port = int(os.environ['DB_PORT'])
+        client = pm.MongoClient(host=host, port=port)
+        return client
