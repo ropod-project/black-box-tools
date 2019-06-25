@@ -11,6 +11,4 @@ services:
   - mongo
 test:
     script:
-        - mongorestore test/bb_tools_test_data --db bb_tools_test_data --host $DB_HOST
         - python3 -m unittest discover -s 'test' -p 'test_*.py'
-        - mongo bb_tools_test_data --eval "db.dropDatabase()" --host $DB_HOST
