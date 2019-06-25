@@ -2,7 +2,6 @@
 
 import time
 import os
-import subprocess
 import unittest
 import pymongo as pm
 
@@ -30,51 +29,9 @@ class TestDBUtils(unittest.TestCase):
     def tearDownClass(cls):
         pass
 
-    def setUp(self):
-        success = self._restore_test_db()
-        self.assertTrue(success)
-
-    def tearDown(self):
-        self._drop_test_db()
-
-    def test_restore_db(self):
-        self._drop_test_db()
-        success = DBUtils.restore_db(data_dir=self.test_db_dir, drop_existing_records=True)
-        self.assertTrue(success)
-        self.assertIn(self.test_db_name, self.client.list_database_names())
-
-    def test_dump_db_with_delete(self):
-        dump_dir = '/tmp/bb_tools_test_dump_' + str(time.time()).replace('.', '_')
-        os.makedirs(dump_dir)
-        success = DBUtils.dump_db(
-            db_name=self.test_db_name,
-            data_dir=dump_dir)
-        self.assertTrue(success)
-        files = os.listdir(os.path.join(dump_dir, self.test_db_name))
-        self.assertListEqual(files, os.listdir(self.test_db_dir))
-        self.assertNotIn(self.test_db_name, self.client.list_database_names())
-
-    def test_dump_db_without_delete(self):
-        dump_dir = '/tmp/bb_tools_test_dump_' + str(time.time()).replace('.', '_')
-        os.makedirs(dump_dir)
-        success = DBUtils.dump_db(
-            db_name=self.test_db_name,
-            data_dir=dump_dir,
-            delete_db=False)
-        self.assertTrue(success)
-        files = os.listdir(os.path.join(dump_dir, self.test_db_name))
-        self.assertListEqual(files, os.listdir(self.test_db_dir))
-        self.assertIn(self.test_db_name, self.client.list_database_names())
-
     def test_get_data_collection_names(self):
         collection_names = DBUtils.get_data_collection_names(db_name=self.test_db_name)
         self.assertListEqual(collection_names, ['ros_sw_ethercat_parser_data', 'ros_ropod_cmd_vel'])
-
-    def test_clear_db(self):
-        DBUtils.clear_db(db_name=self.test_db_name)
-        database = self.client[self.test_db_name]
-        self.assertListEqual(database.list_collection_names(),
-                             ['system.indexes', 'black_box_metadata'])
 
     def test_get_all_docs(self):
         docs = DBUtils.get_all_docs(db_name=self.test_db_name,
@@ -154,15 +111,6 @@ class TestDBUtils(unittest.TestCase):
         timestamp = DBUtils.get_db_newest_timestamp(db_name=self.test_db_name)
         self.assertEqual(timestamp, 1544441433.7863772)
 
-    def _restore_test_db(self):
-        commands = ['mongorestore', self.test_db_dir, '--db', self.test_db_name]
-        with open(os.devnull, 'w') as devnull:
-            process = subprocess.run(commands, stdout=devnull, stderr=devnull)
-        return process.returncode == 0
-
-    def _drop_test_db(self):
-        if self.test_db_name in self.client.list_database_names():
-            self.client.drop_database(self.test_db_name)
 
 if __name__ == '__main__':
     unittest.main()

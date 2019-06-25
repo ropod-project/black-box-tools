@@ -1,5 +1,5 @@
 import os
-from typing import Sequence, Dict
+from typing import Tuple, Sequence, Dict
 import subprocess
 import pymongo as pm
 
@@ -23,13 +23,15 @@ class DBUtils(object):
 
         '''
         try:
+            (host, port) = DBUtils.get_db_host_and_port()
+
             commands = ['mongorestore', data_dir]
             if drop_existing_records:
                 commands.append('--drop')
 
             if not db_name:
                 db_name = os.path.basename(data_dir)
-            commands.extend(['--db', db_name])
+            commands.extend(['--db', db_name, '--host', host, '--port', str(port)])
 
             with open(os.devnull, 'w') as devnull:
                 process = subprocess.run(commands, stdout=devnull, stderr=devnull)
@@ -52,8 +54,11 @@ class DBUtils(object):
 
         '''
         try:
+            (host, port) = DBUtils.get_db_host_and_port()
+
             # we dump the database
-            command = ['mongodump', '--db', db_name, '--out', data_dir]
+            command = ['mongodump', '--db', db_name, '--out', data_dir,
+                       '--host', host, '--port', str(port)]
             with open(os.devnull, 'w') as devnull:
                 process = subprocess.run(command, stdout=devnull, stderr=devnull)
 
@@ -255,11 +260,20 @@ class DBUtils(object):
         be overriden by setting the environment variables "DB_HOST" and
         "DB_PORT" respectively.
         '''
+        (host, port) = DBUtils.get_db_host_and_port()
+        client = pm.MongoClient(host=host, port=port)
+        return client
+
+    @staticmethod
+    def get_db_host_and_port() -> Tuple[str, int]:
+        '''Returns a (host, port) tuple which is ("localhost", 27017) by default,
+        but the values can be overrident by setting the environment variables
+        "DB_HOST" and "DB_PORT" respectively.
+        '''
         host = 'localhost'
         port = 27017
         if 'DB_HOST' in os.environ:
             host = os.environ['DB_HOST']
         if 'DB_PORT' in os.environ:
             port = int(os.environ['DB_PORT'])
-        client = pm.MongoClient(host=host, port=port)
-        return client
+        return (host, port)
