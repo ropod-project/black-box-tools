@@ -17,7 +17,14 @@ class TestDBUtils(unittest.TestCase):
         cls.test_db_name = "bb_tools_test_data"
         test_dir = os.path.abspath(os.path.dirname(__file__))
         cls.test_db_dir = os.path.join(test_dir, cls.test_db_name)
-        cls.client = pm.MongoClient()
+
+        host = 'localhost'
+        port = 27017
+        if 'DB_HOST' in os.environ:
+            host = os.environ['DB_HOST']
+        if 'DB_PORT' in os.environ:
+            port = int(os.environ['DB_PORT'])
+        cls.client = pm.MongoClient(host=host, port=port)
 
     @classmethod
     def tearDownClass(cls):
