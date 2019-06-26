@@ -12,7 +12,6 @@ The toolbox primarily uses Jupyter notebooks for data plotting and analysis with
 * `pymongo`
 * `numpy`
 * `matplotlib`
-* `scikit-image`
 
 # notebooks
 

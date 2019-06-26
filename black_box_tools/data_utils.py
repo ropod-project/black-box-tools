@@ -4,7 +4,6 @@ import ast
 import numpy as np
 import scipy.signal as signal
 import scipy.stats as stats
-from skimage.util import view_as_windows
 import pymongo as pm
 
 class Filters(object):
@@ -169,7 +168,7 @@ class DataUtils(object):
                             (default 5)
 
         '''
-        data_windows = np.apply_along_axis(view_as_windows, 1, data, window_size)
+        data_windows = np.apply_along_axis(DataUtils.split_into_windows, 1, data, window_size)
         corr = lambda x: lambda y: abs(stats.pearsonr(x, y)[0]) if (np.std(x) > 1e-5 and np.std(y) > 1e-5) else \
                                                                 1. if (np.std(x) < 1e-5 and np.std(y) < 1e-5) else 0.
 
@@ -540,6 +539,24 @@ class DataUtils(object):
                 else:
                     data.append(None)
         return (variables, data)
+
+    @staticmethod
+    def split_into_windows(data: Sequence, window_size: int) -> Sequence[Sequence]:
+        '''Given a one-dimensional list of elements "data",
+        returns a 2D numpy array of sliding windows of size "window_size".
+
+        Example:
+        If "data" = [1,2,3,4,5] and "window_size" = 3,
+        the resulting array will be
+        [[1,2,3],
+         [2,3,4],
+         [3,4,5]]
+
+        '''
+        data_len = len(data)
+        windows = [data[i:i+window_size] for i, _ in enumerate(data)
+                   if i+window_size <= data_len]
+        return np.array(windows)
 
     @staticmethod
     def safe_literal_eval(data_str: str):
