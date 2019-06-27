@@ -1,4 +1,5 @@
-from typing import Sequence, Dict
+import os
+from typing import Tuple, Sequence, Dict
 import subprocess
 import pymongo as pm
 
@@ -22,16 +23,19 @@ class DBUtils(object):
 
         '''
         try:
+            (host, port) = DBUtils.get_db_host_and_port()
+
             commands = ['mongorestore', data_dir]
             if drop_existing_records:
                 commands.append('--drop')
 
-            if db_name:
-                commands.append('--db')
-                commands.append(db_name)
+            if not db_name:
+                db_name = os.path.basename(data_dir)
+            commands.extend(['--db', db_name, '--host', host, '--port', str(port)])
 
-            subprocess.run(commands)
-            return True
+            with open(os.devnull, 'w') as devnull:
+                process = subprocess.run(commands, stdout=devnull, stderr=devnull)
+            return process.returncode == 0
         except:
             print('[restore_db] An error occurred while restoring {0}'.format(data_dir))
             raise
@@ -50,14 +54,18 @@ class DBUtils(object):
 
         '''
         try:
+            (host, port) = DBUtils.get_db_host_and_port()
+
             # we dump the database
-            command = ['mongodump', '--db', db_name, '--out', data_dir]
-            subprocess.run(command)
+            command = ['mongodump', '--db', db_name, '--out', data_dir,
+                       '--host', host, '--port', str(port)]
+            with open(os.devnull, 'w') as devnull:
+                process = subprocess.run(command, stdout=devnull, stderr=devnull)
 
             if delete_db:
-                client = pm.MongoClient()
+                client = DBUtils.get_db_client()
                 client.drop_database(db_name)
-            return True
+            return process.returncode == 0
         except:
             print('[restore_db] An error occurred while restoring {0}'.format(data_dir))
             raise
@@ -70,7 +78,7 @@ class DBUtils(object):
         @param db_name: str -- name of a MongoDB database
 
         '''
-        client = pm.MongoClient()
+        client = DBUtils.get_db_client()
         db = client[db_name]
         collection_names = db.list_collection_names()
         filtered_collection_names = [collection for collection in collection_names
@@ -86,7 +94,7 @@ class DBUtils(object):
         @param db_name: str -- name of a MongoDB database
 
         '''
-        client = pm.MongoClient()
+        client = DBUtils.get_db_client()
         db = client[db_name]
         collections = DBUtils.get_data_collection_names(db_name)
         for collection in collections:
@@ -104,23 +112,23 @@ class DBUtils(object):
         return DBUtils.get_docs(db_name, collection_name)
 
     @staticmethod
-    def get_docs(db_name: str, collecion_name: str,
+    def get_docs(db_name: str, collection_name: str,
                  start_time: float=-1, stop_time: float=-1) -> Sequence[Dict]:
         """Returns all documents contained in the specific collection of the
         given database within given time duration
 
         @param db_name -- string (name of MongoDB database)
-        @param collecion_name -- string (name of a collection from that db)
+        @param collection_name -- string (name of a collection from that db)
         @param start_time -- float (start time stamp)
         @param stop_time -- float (stop time stamp)
 
         """
-        doc_cursor = DBUtils.get_doc_cursor(db_name, collecion_name, start_time, stop_time)
+        doc_cursor = DBUtils.get_doc_cursor(db_name, collection_name, start_time, stop_time)
         docs = [doc for doc in doc_cursor]
         return docs
 
     @staticmethod
-    def get_docs_of_last_n_secs(db_name: str, collecion_name: str,
+    def get_docs_of_last_n_secs(db_name: str, collection_name: str,
                                 n: float=3.) -> Sequence[Dict]:
         """Return documents from given collection name of last n seconds from
         given db name
@@ -133,12 +141,11 @@ class DBUtils(object):
         """
         stop_time = DBUtils.get_db_newest_timestamp(db_name)
         start_time = stop_time - n
-        return DBUtils.get_docs(db_name, collecion_name, start_time, stop_time)
+        return DBUtils.get_docs(db_name, collection_name, start_time, stop_time)
 
     @staticmethod
     def get_doc_cursor(db_name: str, collection_name: str,
-                       start_time: float=-1., stop_time: float=-1,
-                       port: int=27017) -> pm.cursor.Cursor:
+                       start_time: float=-1., stop_time: float=-1) -> pm.cursor.Cursor:
         '''Returns a cursor for all documents in the specified collection of
         the given database which have the 'timestamp' value in the given range.
         If both "start_time" and "end_time" are -1, returns all documents. If
@@ -150,10 +157,9 @@ class DBUtils(object):
         @param collection_name: str -- name of a collection from which to take data
         @param start_time: float -- starting time stamp (default -1.)
         @param stop_time: float -- stoping time stamp (default -1.)
-        @param port: int -- database port (default 27017)
 
         '''
-        client = pm.MongoClient(port=port)
+        client = DBUtils.get_db_client()
         database = client[db_name]
         collection = database[collection_name]
 
@@ -177,7 +183,7 @@ class DBUtils(object):
         @param collection_name: str -- name of a collection whose metadata should be retrieved
 
         '''
-        client = pm.MongoClient()
+        client = DBUtils.get_db_client()
         db = client[db_name]
         collection = db['black_box_metadata']
         metadata_doc = collection.find_one({'collection_name': collection_name})
@@ -192,7 +198,7 @@ class DBUtils(object):
         @param collection_name: str -- name of a collection
 
         '''
-        client = pm.MongoClient()
+        client = DBUtils.get_db_client()
         db = client[db_name]
         collection = db[collection_name]
         doc = collection.find_one(sort=[('timestamp', pm.ASCENDING)])
@@ -207,7 +213,7 @@ class DBUtils(object):
         @param collection_name: str -- name of a collection
 
         '''
-        client = pm.MongoClient()
+        client = DBUtils.get_db_client()
         db = client[db_name]
         collection = db[collection_name]
         doc = collection.find_one(sort=[('timestamp', pm.DESCENDING)])
@@ -246,3 +252,28 @@ class DBUtils(object):
             if newest_doc['timestamp'] > stop_timestamp:
                 stop_timestamp = newest_doc['timestamp']
         return stop_timestamp
+
+    @staticmethod
+    def get_db_client() -> pm.MongoClient:
+        '''Returns a MongoDB client at <host>:<port>. By default,
+        <host> is "localhost" and <port> is 27017, but these values can
+        be overriden by setting the environment variables "DB_HOST" and
+        "DB_PORT" respectively.
+        '''
+        (host, port) = DBUtils.get_db_host_and_port()
+        client = pm.MongoClient(host=host, port=port)
+        return client
+
+    @staticmethod
+    def get_db_host_and_port() -> Tuple[str, int]:
+        '''Returns a (host, port) tuple which is ("localhost", 27017) by default,
+        but the values can be overrident by setting the environment variables
+        "DB_HOST" and "DB_PORT" respectively.
+        '''
+        host = 'localhost'
+        port = 27017
+        if 'DB_HOST' in os.environ:
+            host = os.environ['DB_HOST']
+        if 'DB_PORT' in os.environ:
+            port = int(os.environ['DB_PORT'])
+        return (host, port)
