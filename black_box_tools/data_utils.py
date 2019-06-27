@@ -99,6 +99,12 @@ class DataUtils(object):
         * the result does not contain pairs of variables one of which is constant
           and the other one is not (the correlation coefficient is also undefined in this case)
 
+        Example:
+        If "variable_names" = ["var1", "var2", "var3"],
+            "measurement_matrix" = np.array([[1, 2, 3], [4, 6, 8], [3, 6, 7]])
+        the result is
+        * the list [("var1", "var2"), ("var1", "var3"), ("var2", "var3")]
+
         Keyword arguments:
         variable_names: Sequence[str] -- a list of variable names
         measurement_matrix: Sequence[Sequence[float]] -- a numpy matrix of measurements
@@ -158,7 +164,7 @@ class DataUtils(object):
             "window_size" = 2,
         the result is
         * the list [("var1", "var2"), ("var1", "var3"), ("var2", "var3")]
-        * the correlation array [[1, 1], [1, 0], [1, 1]]
+        * the correlation array [[1, 0], [1, 0], [1, 1]]
 
         Keyword arguments:
         variable_names: Sequence[str]: list of variable names
