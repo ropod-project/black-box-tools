@@ -19,7 +19,9 @@ class TestDataUtils(unittest.TestCase):
         test_dir = os.path.abspath(os.path.dirname(__file__))
         cls.test_db_dir = os.path.join(test_dir, cls.test_db_name)
         cls.collection_name = 'ros_ropod_cmd_vel'
-        cls.client = pm.MongoClient()
+
+        host, port = cls._get_db_host_and_port()
+        cls.client = pm.MongoClient(host=host, port=port)
         success = cls._restore_test_db()
         assert(success)
 
