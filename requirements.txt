@@ -5,5 +5,5 @@ matplotlib
 scipy
 argparse
 rospkg
-catkin_pkg
+catkin-pkg
 git+https://github.com/ropod-project/rospy_message_converter.git#egg=rospy_message_converter
