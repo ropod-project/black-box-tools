@@ -1,6 +1,7 @@
 from typing import Tuple, Sequence, Dict
 import time
 import ast
+import uuid
 import numpy as np
 import scipy.signal as signal
 import scipy.stats as stats
@@ -412,6 +413,7 @@ class DataUtils(object):
         query_msg = DataUtils.get_bb_query_msg_template()
         query_msg['header']['type'] = 'DATA-QUERY'
         query_msg['header']['timestamp'] = time.time()
+        query_msg['header']['msgId'] = str(uuid.uuid4())
         query_msg['payload']['senderId'] = sender_id
         query_msg['payload']['blackBoxId'] = bb_id
         query_msg['payload']['variables'] = variable_list
@@ -433,6 +435,7 @@ class DataUtils(object):
         query_msg = DataUtils.get_bb_query_msg_template()
         query_msg['header']['type'] = 'LATEST-DATA-QUERY'
         query_msg['header']['timestamp'] = time.time()
+        query_msg['header']['msgId'] = str(uuid.uuid4())
         query_msg['payload']['senderId'] = sender_id
         query_msg['payload']['blackBoxId'] = bb_id
         query_msg['payload']['variables'] = variable_list
