@@ -5,6 +5,56 @@ import pymongo as pm
 
 class DBUtils(object):
     @staticmethod
+    def restore_subdbs(db_name: str,
+                       data_dirs: Sequence[str],
+                       subdb_names: Sequence[str]) -> bool:
+        '''Restores multiple dumps into a single database. For each
+        of the dumps, a metadata entry with the following contents
+        is added to the in the "black_box_metadata" collection:
+        {
+            "type": "database",
+            "name": subdb_names[i],
+            "start_time": oldest timestamp in the database,
+-           "end_time": latest timestamp in the database
+        }
+
+        Keyword arguments:
+        db_name: str -- name of the database in which the data are restored
+        data_dirs: Sequence[str] -- list of directory names with database dumps
+        subdb_names: Sequence[str] -- list of names of the database dumps
+                                      (semantic descriptions of the data)
+
+        '''
+        data_dir = None
+        try:
+            for i, data_dir in enumerate(data_dirs):
+                print('[restore_db_list] Restoring data from {0}'.format(data_dir))
+
+                # we restore the data into a temporary database and read the
+                # oldest and newest data timestamp from it; the temporary
+                # database is then removed
+                DBUtils.restore_db(data_dir, drop_existing_records=True, db_name='restore_temp')
+                oldest_timestamp = DBUtils.get_db_oldest_timestamp('restore_temp')
+                newest_timestamp = DBUtils.get_db_newest_timestamp('restore_temp')
+                DBUtils.drop_db('restore_temp')
+
+                # we restore the data into the combined database
+                DBUtils.restore_db(data_dir, drop_existing_records=False, db_name=db_name)
+
+                # we add metadata about the imported database into the combined database
+                client = DBUtils.get_db_client()
+                db = client[db_name]
+                metadata_collection = db['black_box_metadata']
+                metadata = {'type': 'database',
+                            'name': subdb_names[i],
+                            'start_time': oldest_timestamp,
+                            'end_time': newest_timestamp}
+                metadata_collection.insert_one(metadata)
+        except:
+            print('[restore_db_list] An error occurred while restoring {0}'.format(data_dir))
+            raise
+
+    @staticmethod
     def restore_db(data_dir: str, drop_existing_records: bool=True,
                    db_name: str=None) -> bool:
         '''Restores a MongoDB database dumped in the given directory. If "db_name"
@@ -101,6 +151,17 @@ class DBUtils(object):
             db.drop_collection(collection)
 
     @staticmethod
+    def drop_db(db_name: str) -> None:
+        '''Drops the given database.
+
+        Keyword arguments:
+        @param db_name: str -- name of a MongoDB database
+
+        '''
+        client = DBUtils.get_db_client()
+        client.drop_database(db_name)
+
+    @staticmethod
     def get_all_docs(db_name: str, collection_name: str) -> Sequence[Dict]:
         '''Returns all documents contained in the specified collection of the given database
 
@@ -110,6 +171,51 @@ class DBUtils(object):
 
         '''
         return DBUtils.get_docs(db_name, collection_name)
+
+    @staticmethod
+    def get_subdb_metadata(db_name: str) -> Sequence[Dict[str, str]]:
+        '''Returns a list of dictionaries containing metadata about
+        any sub-databases stored in the given database. In particular,
+        the returned dictionaries are of the following form:
+        {
+            "type": "database",
+            "name": name of a sub-database,
+            "start_time": oldest timestamp in the database,
+-           "end_time": latest timestamp in the database
+        }
+
+        Keyword arguments:
+        db_name: str -- name of a MongoDB database
+
+        '''
+        client = DBUtils.get_db_client()
+        db = client[db_name]
+        collection = db['black_box_metadata']
+        db_data = [x for x in collection.find({'type': 'database'})]
+        return db_data
+
+    @staticmethod
+    def get_subdb_docs(db_name: str, collection_name: str,
+                       subdb_metadata: Sequence[Dict[str, str]]) -> Sequence[Dict]:
+        '''Returns a list of dictionaries in which the keys are sub-database
+        names and the values are lists of documents in the given collection
+        corresponding to the respective sub-databases. The documents belonging
+        to a particular sub-database are obtained based on the sub-database timestamps,
+        namely the assumption is that the sub-databases do not overlap temporally.
+
+        Keyword arguments:
+        @param db_name: str -- name of a MongoDB database
+        @param collection_name: str -- name of a collection from which to take data
+        @param subdb_metadata: Sequence[Dict[str, str]]: a list of dictionaries as
+                                                         returned by get_subdb_metadata
+
+        '''
+        docs = {}
+        for subdb in subdb_metadata:
+            docs[subdb['name']] = DBUtils.get_docs(db_name, collection_name,
+                                                   start_time=subdb['start_time'],
+                                                   stop_time=subdb['end_time'])
+        return docs
 
     @staticmethod
     def get_docs(db_name: str, collection_name: str,
