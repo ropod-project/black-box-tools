@@ -59,6 +59,7 @@ class PlotUtils(object):
                            x_label: str, y_label: str,
                            event_timestamps: list=None,
                            data_labels: list=None,
+                           data_colors: list=None,
                            fontsize: int=30,
                            event_annotation_color='g') -> None:
         '''Plots multiple time series on a single subplot.
@@ -80,6 +81,8 @@ class PlotUtils(object):
                        of the list should match the number of columns in "data";
                        if this parameter is passed, a legend is added to the plot
                        (default None)
+        data_colors -- a list of optional colors for the plotted data, where the size
+                       of the list should match the number of columns in "data"
         fontsize -- fontsize for the x and y axes labels (default 30)
         event_annotation_color -- color of event annotation lines (default 'g')
 
@@ -91,12 +94,25 @@ class PlotUtils(object):
                 print('The length of data_labels should match the number of columns in data')
                 return
 
+        if data_colors:
+            try:
+                assert data.shape[1] == len(data_colors)
+            except AssertionError:
+                print('The length of data_colors should match the number of columns in data')
+                return
+
         fig.add_subplot(*subplot_params)
 
         # we plot the data
-        if data_labels:
+        if data_labels and data_colors:
+            for i in range(data.shape[1]):
+                plt.plot(timestamps, data[:, i], label=data_labels[i], color=data_colors[i])
+        elif data_labels:
             for i in range(data.shape[1]):
                 plt.plot(timestamps, data[:, i], label=data_labels[i])
+        elif data_colors:
+            for i in range(data.shape[1]):
+                plt.plot(timestamps, data[:, i], color=data_colors[i])
         else:
             for i in range(data.shape[1]):
                 plt.plot(timestamps, data[:, i])
