@@ -326,6 +326,29 @@ class DBUtils(object):
         return doc
 
     @staticmethod
+    def get_last_doc_before(db_name: str, collection_name: str,
+                            timestamp_filter: float=-1.):
+        '''Returns the last document in the collection with the given name
+        that is before given timestamp. If timestamp has a negative value,
+        the most recent document in the collection is returned.
+
+        Keyword arguments:
+        @param db_name: str -- name of a MongoDB database
+        @param collection_name: str -- name of a collection
+        @param timestamp_filter: float -- latest time of the last record in
+                                          the given collection (default -1.)
+
+        '''
+        if timestamp_filter < 0:
+            return DBUtils.get_newest_doc(db_name, collection_name)
+
+        client = DBUtils.get_db_client()
+        database = client[db_name]
+        collection = database[collection_name]
+        return collection.find_one({'timestamp': {'$lte': timestamp_filter}},
+                                   sort=[('timestamp', pm.DESCENDING)])
+
+    @staticmethod
     def get_db_oldest_timestamp(db_name: str) -> float:
         """get the oldest record in the mongo db and return the corresponding
         timestamp
