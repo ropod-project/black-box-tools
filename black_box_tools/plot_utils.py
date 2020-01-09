@@ -2,9 +2,6 @@ import math
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-import black_box_tools.transformations as tf
-from black_box_tools.db_utils import DBUtils
-from black_box_tools.data_utils import DataUtils
 
 class PlotUtils(object):
     @staticmethod
@@ -134,46 +131,20 @@ class PlotUtils(object):
             plt.legend()
 
     @staticmethod
-    def plot_position_velocity_from_bbdb(db_name, arrow_length=0.2):
+    def plot_position_velocity(data, arrow_length=0.2):
         """Plot position of robot with dots and its velocity at that position with
         a line. Color of the dot and line represents the intensity of velocity.
 
-        :db_name: str
+        :data: numpy.Array (shape n x 5) 
+                [pose_x, pose_y, pose_theta, vel_x, vel_y]
+                .
+                .
+                .
+                n times
         :arrow_length: float
         :returns: matplotlib.pyplot.Plot
 
         """
-        docs = DBUtils.get_docs(db_name, 'ros_amcl_pose')
-        num_of_docs = len(docs)
-        data = np.zeros((num_of_docs, 6))
-        # data (nx6) is arranged as follows
-        # [pose_x, pose_y, pose_theta, vel_x, vel_y, vel_norm]
-        # .
-        # .
-        # .
-        # n times
-        for i, doc in enumerate(docs):
-            # get position information from amcl_pose localisation
-            data[i][0] = DataUtils.get_var_value(doc, 'pose/pose/position/x')
-            data[i][1] = DataUtils.get_var_value(doc, 'pose/pose/position/y')
-            quat_x = DataUtils.get_var_value(doc, 'pose/pose/orientation/x')
-            quat_y = DataUtils.get_var_value(doc, 'pose/pose/orientation/y')
-            quat_z = DataUtils.get_var_value(doc, 'pose/pose/orientation/z')
-            quat_w = DataUtils.get_var_value(doc, 'pose/pose/orientation/w')
-            theta = tf.euler_from_quaternion((quat_w, quat_x, quat_y, quat_z))[2]
-            data[i][2] = theta
-            timestamp = DataUtils.get_var_value(doc, 'timestamp')
-
-            # get velocity information from odom at the same timestamp as position
-            odom_doc = DBUtils.get_last_doc_before(db_name, 'ros_ropod_odom', timestamp)
-            vel_x = DataUtils.get_var_value(odom_doc, 'twist/twist/linear/x')
-            vel_y = DataUtils.get_var_value(odom_doc, 'twist/twist/linear/y')
-            vel = (vel_x**2 + vel_y**2)**0.5
-            data[i][3] = vel_x
-            data[i][4] = vel_y
-            data[i][5] = vel
-
-        # plot the gathered data from above
         f, ax = plt.subplots(figsize=(10, 5))
         for i in range(data.shape[0]):
             # calc the angle of applied velocity
@@ -183,11 +154,8 @@ class PlotUtils(object):
             end_point_x = math.cos(omega)*(arrow_length) + data[i, 0]
             end_point_y = math.sin(omega)*(arrow_length) + data[i, 1]
 
-            # plt.plot([data[i, 0], end_point_x], [data[i, 1], end_point_y], color=plt.cm.jet(data[i, 5]))
-            # plt.plot(data[i, 0], data[i, 1], 'o', color=plt.cm.jet(data[i, 5]))
-            ax.plot([data[i, 0], end_point_x], [data[i, 1], end_point_y], color=plt.cm.jet(data[i, 5]))
-            ax.plot(data[i, 0], data[i, 1], 'o', color=plt.cm.jet(data[i, 5]))
+            vel = (data[i, 3]**2 + data[i, 4]**2)**0.5
+            ax.plot([data[i, 0], end_point_x], [data[i, 1], end_point_y], color=plt.cm.jet(vel))
+            ax.plot(data[i, 0], data[i, 1], 'o', color=plt.cm.jet(vel))
 
-        # plt.axis('equal')
-        # plt.show()
         return ax
