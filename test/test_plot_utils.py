@@ -15,8 +15,6 @@ def get_pos_vel_data(db_name):
     data = np.zeros((num_of_docs, 5))
     # data (nx6) is arranged as follows
     for i, doc in enumerate(docs):
-        if i < 350 or i > 400:
-            continue
         # get position information from amcl_pose localisation
         data[i][0] = DataUtils.get_var_value(doc, 'pose/pose/position/x')
         data[i][1] = DataUtils.get_var_value(doc, 'pose/pose/position/y')
@@ -37,9 +35,8 @@ def get_pos_vel_data(db_name):
 
     return data
 
-
 if __name__ == "__main__":
     DATA = get_pos_vel_data(DB_NAME)
-    AXIS = PlotUtils.plot_position_velocity(DATA)
-    plt.axis('equal')
+    FIG = plt.figure(figsize=(15, 10))
+    PlotUtils.plot_position_velocity(FIG, DATA)
     plt.show()
