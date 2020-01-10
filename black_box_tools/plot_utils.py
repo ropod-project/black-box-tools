@@ -1,3 +1,4 @@
+import math
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
@@ -128,3 +129,43 @@ class PlotUtils(object):
         # we add a legend only if a data label is assigned
         if data_labels:
             plt.legend()
+
+    @staticmethod
+    def plot_position_velocity(fig, data, arrow_length=0.2):
+        """Plot position of robot with dots and its velocity at that position with
+        a line. Color of the dot and line represents the intensity of velocity.
+
+        :data: numpy.Array (shape n x 5) 
+                [pose_x, pose_y, pose_theta, vel_x, vel_y]
+                .
+                .
+                .
+                n times
+        :arrow_length: float
+        :returns: matplotlib.pyplot.Plot
+
+        """
+        ax = fig.add_subplot(1, 1, 1)
+        # create a list of normalised velocities for plotting colormap
+        velocities = np.zeros(data.shape[0])
+        for i in range(data.shape[0]):
+            # calc the angle of applied velocity
+            omega = math.atan2(data[i, 4], data[i, 3]) + data[i, 2]
+
+            # end point for velocity vector (start point is actual position)
+            end_point_x = math.cos(omega)*(arrow_length) + data[i, 0]
+            end_point_y = math.sin(omega)*(arrow_length) + data[i, 1]
+
+            vel = (data[i, 3]**2 + data[i, 4]**2)**0.5
+            velocities[i] = vel
+            ax.plot([data[i, 0], end_point_x], [data[i, 1], end_point_y], color=plt.cm.jet(vel))
+            ax.plot(data[i, 0], data[i, 1], 'o', color=plt.cm.jet(vel))
+
+        plt.axis('equal')
+
+        # WARNING: ScalarMappable usage changes depending on version of matplotlib
+        sm = plt.cm.ScalarMappable(cmap=plt.cm.jet,
+                                   norm=plt.Normalize(vmin=np.min(velocities),
+                                                      vmax=np.max(velocities)))
+        sm._A = []
+        plt.colorbar(sm)
