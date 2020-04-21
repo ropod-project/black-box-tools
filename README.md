@@ -4,7 +4,7 @@
 
 A collection of tools for offline processing of data from a robotic black box (as implemented in https://github.com/ropod-project/black-box).
 
-The toolbox primarily uses Jupyter notebooks for data plotting and analysis with the hope that this simplifies the sharing, presentation, and above all processing of data.
+The toolbox primarily uses Jupyter notebooks for data plotting and analysis with the hope that this simplifies the sharing, presentation, and above all, processing of data.
 
 # Dependencies
 
@@ -12,12 +12,19 @@ The toolbox primarily uses Jupyter notebooks for data plotting and analysis with
 * `pymongo`
 * `numpy`
 * `matplotlib`
+* `scipy`
+* `rospy`
+* `rospy_message_converter`
+* `yaml`
+* `termcolor`
 
 # notebooks
 
 The following notebooks are provided with this toolbox:
 * `sw_data_plot`: Plots data from the smart wheels of a platform
 * `cmd_vel_plot`: Plots velocity commands
+* `cmd_vel_plot-multi_db`:
+* `pivot_encoder_plot-multi_db`:
 
 # sw_data_plot
 
