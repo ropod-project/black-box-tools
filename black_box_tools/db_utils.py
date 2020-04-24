@@ -396,7 +396,7 @@ class DBUtils(object):
     @staticmethod
     def get_db_host_and_port() -> Tuple[str, int]:
         '''Returns a (host, port) tuple which is ("localhost", 27017) by default,
-        but the values can be overrident by setting the environment variables
+        but the values can be overridden by setting the environment variables
         "DB_HOST" and "DB_PORT" respectively.
         '''
         host = 'localhost'
